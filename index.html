@@ -1,570 +1,2126 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>像 LabelMe 一样的自由标注工具</title>
-<style>
-  :root{
-    --ui:#eeeeee;
-    --ui2:#f7f7f7;
-    --line:#c7c7c7;
-    --line2:#aaaaaa;
-    --text:#333;
-    --muted:#777;
-    --blue:#3a7bd5;
-    --green:#05b92d;
-    --pink:#d57c83;
-    --red:#e52f2f;
-    --shadow:0 8px 30px rgba(0,0,0,.18);
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    height:100vh;
-    overflow:hidden;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Noto Sans SC",sans-serif;
-    font-size:10px;
-    color:var(--text);
-    background:#ddd;
-  }
-  .app{height:100vh;display:flex;flex-direction:column;background:#e9e9e9}
-  .titlebar{
-    height:28px;
-    flex:0 0 28px;
-    background:#e5e5e5;
-    border-bottom:1px solid #cfcfcf;
-    display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:12px;color:#444;
-    position:relative;
-    user-select:none;
-  }
-  .traffic{position:absolute;left:12px;display:flex;gap:8px}
-  .traffic span{width:13px;height:13px;border-radius:50%;background:#ccc;border:1px solid #bbb;display:inline-block}
-  .toolbar{
-    height:82px;flex:0 0 82px;background:var(--ui);
-    border-bottom:1px solid #bbb;display:flex;align-items:stretch;overflow:hidden;
-  }
-  .toolgroup{display:flex;align-items:center;padding:5px 8px;border-right:1px solid #ccc;gap:8px}
-  .topbtn{
-    min-width:48px;height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:4px;border-radius:3px;color:#222;font-size:10px;line-height:1.05;cursor:pointer;
-  }
-  .topbtn:hover{background:#e0e0e0}
-  .topbtn.disabled{color:#aaa;cursor:not-allowed}.topbtn.disabled .ico{opacity:.35}
-  .ico{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:25px;color:#222}
-  .ico.folder{color:#009bdd}.ico.red{color:#e33}.ico.gray{color:#666}.ico.blue{color:#4d78a8}
-  .toolbox{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:230px;padding:0 8px}
-  .toolbox-title{text-align:center;font-size:10px;color:#222}
-  .selectrow{display:flex;gap:8px;align-items:center}
-  select,input[type="text"],input[type="number"]{height:30px;border:1px solid #c5c5c5;border-radius:3px;background:white;padding:0 8px;font-size:10px;color:#333}
-  .smallinput{width:70px}.runbtn{height:30px;border:1px solid #ccc;background:#f2f2f2;border-radius:3px;padding:0 10px;color:#777;font-size:10px}
-  .zoom-box{display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;min-width:90px}.zoom-box span{font-size:10px}.zoom-box input{width:70px;text-align:center;font-weight:600}
-  .main{--rightbar-width:220px;flex:1;display:grid;grid-template-columns:68px 1fr 6px var(--rightbar-width);min-height:0}
-  .leftbar{background:#f0f0f0;border-right:1px solid #bfbfbf;display:flex;flex-direction:column;align-items:stretch;padding:8px 0;overflow:auto}
-  .sidebtn{height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;line-height:1.05;text-align:center;white-space:nowrap;cursor:pointer;border-left:3px solid transparent;color:#222}
-  .sidebtn:hover{background:#e4e4e4}.sidebtn.active{background:#ddd;border-left-color:#2b72d2}
-  .sideico{width:28px;height:24px;display:flex;align-items:center;justify-content:center;font-size:23px;color:#444}.sideico svg{width:28px;height:24px;overflow:visible}
-  .workspace{min-width:0;min-height:0;position:relative;background:#ccc;display:flex;flex-direction:column}
-  .right-resizer{background:#c8c8c8;border-left:1px solid #b6b6b6;border-right:1px solid #b6b6b6;cursor:col-resize;min-height:0}
-  .right-resizer:hover,.right-resizer.dragging{background:#9fbce8}
-  .canvaswrap{flex:1;min-height:0;overflow:auto;background:#bdbdbd;padding:0;position:relative}
-  .stage{position:relative;margin:0;min-width:100%;min-height:100%;}
-  .imageArea{position:absolute;left:50%;top:50%;background:#f4f4f4;display:inline-block;vertical-align:top}
-  #image{display:block;max-width:none;user-select:none;-webkit-user-drag:none;filter:brightness(var(--bright,1)) contrast(var(--contrast,1));}
-  #overlay{position:absolute;left:0;top:0;overflow:visible;pointer-events:auto;cursor:crosshair}
-  .placeholder{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:520px;max-width:80%;background:rgba(255,255,255,.86);border:1px dashed #aaa;border-radius:8px;text-align:center;padding:35px;color:#555;box-shadow:0 4px 18px rgba(0,0,0,.08)}
-  .placeholder h2{margin:0 0 10px;font-size:19px}.placeholder p{margin:8px 0;font-size:11px}.placeholder button{margin-top:12px;height:36px;padding:0 18px;border:1px solid #bbb;background:#f7f7f7;border-radius:4px;font-size:11px;cursor:pointer}
-  .statusbar{height:28px;flex:0 0 28px;background:#f4f4f4;border-top:1px solid #bcbcbc;display:flex;align-items:center;justify-content:space-between;padding:0 9px;font-size:11px;color:#333;white-space:nowrap}
-  .rightbar{background:#f4f4f4;display:grid;grid-template-rows:250px 1fr 230px;min-height:0}
-  .panel{border-bottom:1px solid #bfbfbf;display:flex;flex-direction:column;min-height:0;background:#f4f4f4}
-  .panelhead{height:27px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;border-bottom:1px solid #d0d0d0;background:#eeeeee;font-size:11px;color:#333}
-  .paneltools{display:flex;gap:4px;color:#777;font-size:10px}.paneltools span{border:1px solid #999;width:14px;height:14px;display:flex;align-items:center;justify-content:center;border-radius:2px;line-height:1}
-  .panelbody{flex:1;overflow:auto;background:white}.search{height:33px;padding:4px;border-bottom:1px solid #ddd;background:#f6f6f6}.search input{width:100%;height:24px}
-  .labellist,.shapelist,.filelist{list-style:none;margin:0;padding:0;font-size:12px}.labellist li,.shapelist li,.filelist li{height:28px;display:flex;align-items:center;gap:7px;padding:0 8px;white-space:nowrap;border-bottom:1px solid #f3f3f3;cursor:pointer}.labellist li:hover,.shapelist li:hover,.filelist li:hover{background:#eee}.shapelist li.selected,.filelist li.selected{background:#d9d9d9}.dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex:0 0 12px}.checkbox{width:17px;height:17px;border:1px solid #aaa;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#111;flex:0 0 17px}.labeltext{overflow:hidden;text-overflow:ellipsis}.muted{color:#aaa}.filelist li{font-size:10px}.rightpanel-note{padding:10px;font-size:9px;color:#777;line-height:1.5}
-  .shape-path{fill:rgba(213,124,131,.12);stroke:#d57c83;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-path.selected{stroke:#e31b23;stroke-width:8;fill:rgba(227,27,35,.1)}
-  .shape-rect{fill:rgba(0,185,45,.06);stroke:#00b928;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-rect.selected{stroke:#e31b23;stroke-width:8;fill:rgba(227,27,35,.08)}
-  .shape-line{fill:none;stroke:#d57c83;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-line.selected{stroke:#e31b23;stroke-width:8}
-  .shape-point{fill:#d57c83;stroke:white;stroke-width:2;vector-effect:non-scaling-stroke}.shape-point.selected{fill:#e31b23}
-  .shape-label{font-size:16px;font-weight:700;pointer-events:none;user-select:none}
-  .preview{fill:rgba(255,255,255,.08);stroke:#e31b23;stroke-width:2;stroke-dasharray:7 5;vector-effect:non-scaling-stroke}.crosshair{stroke:#777;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
-  .modalshade{position:fixed;inset:0;background:rgba(0,0,0,.04);display:none;z-index:30}.modal{position:absolute;width:360px;background:#eee;border:1px solid #c8c8c8;border-radius:14px;box-shadow:var(--shadow);overflow:hidden}.modalbar{height:34px;display:flex;align-items:center;padding:0 11px;gap:8px;background:#eeeeee}.modalbar span{width:14px;height:14px;border-radius:50%;display:block}.close{background:#ff5f56}.min{background:#ffbd2e}.max{background:#27c93f}.modalbody{padding:10px 14px 15px}.modalrow{display:flex;gap:8px;margin-bottom:9px}.modalrow input{flex:1;height:34px;font-size:13px}.modalrow .group{width:78px;flex:0 0 78px;color:#888}.colorpick{width:42px!important;flex:0 0 42px!important;padding:2px!important}.modalactions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px}.modalactions button{width:96px;height:33px;border-radius:4px;border:1px solid #b8b8b8;background:#f7f7f7;font-size:12px}.modalactions button.primary{border-color:#5aa2dd;background:#eef7ff}.suggestions{height:180px;background:white;border:1px solid #ccc;overflow:auto;margin-bottom:8px}.suggestions div{height:24px;display:flex;align-items:center;padding:0 7px;font-size:12px}.suggestions div:hover,.suggestions div.active{background:#d7d7d7}.descbox{width:100%;height:58px;border:1px solid #ccc;border-radius:3px;resize:none;font-size:11px;padding:8px;font-family:inherit}.hidden{display:none!important}.hint{font-size:9px;color:#666;padding:4px 8px;background:#fff7d7;border-top:1px solid #e5dba0}.splitlabel{font-size:9px;color:#888}.rangegroup{display:flex;flex-direction:column;gap:3px;min-width:142px}.rangegroup label{font-size:9px;color:#555}.rangegroup input{width:120px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Archive</title>
+
+  <style>
+    :root {
+      --bg: #878787;
+      --fg: #333333;
+      --active: #000000;
+      --line: rgba(0, 0, 0, 0.58);
+      --muted: rgba(0, 0, 0, 0.45);
+      --line-weight: 1px;
+      --nav-height: 31px;
+      --footer-height: 38px;
+      --ui-font-size: 13pt;
+      --kept-font-size: 18pt;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 400;
+      transition:
+        background-color 0.22s ease,
+        color 0.22s ease;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      background: transparent;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .site {
+      min-height: 100vh;
+    }
+
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: var(--nav-height);
+      z-index: 50;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 24px;
+      padding: 3px 11px 4px;
+      border-bottom: var(--line-weight) solid currentColor;
+      background-color: var(--bg);
+      font-size: var(--ui-font-size);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      transition:
+        background-color 0.22s ease,
+        color 0.22s ease,
+        border-color 0.22s ease;
+    }
+
+    .nav-left {
+      justify-self: start;
+      font-size: var(--kept-font-size);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .nav-center {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-start;
+      white-space: nowrap;
+    }
+
+    .nav-right {
+      position: absolute;
+      right: 11px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .toggle {
+      opacity: 0.55;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .toggle.is-active {
+      opacity: 1;
+    }
+
+    .toggle::before {
+      content: "";
+      display: inline-block;
+      width: 0.72em;
+      height: 0.72em;
+      border: 0.1em solid currentColor;
+      flex: 0 0 auto;
+    }
+
+    .toggle.is-active::before {
+      content: "";
+    }
+
+    .toggle.is-active::after {
+      content: "";
+      position: absolute;
+      left: 0.14em;
+      top: 0.23em;
+      width: 0.46em;
+      height: 0.23em;
+      border-left: 0.1em solid currentColor;
+      border-bottom: 0.1em solid currentColor;
+      transform: rotate(-45deg);
+    }
+
+    .floating-figure {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: clamp(150px, 18vw, 270px);
+      aspect-ratio: 1 / 1;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.96;
+      transform-origin: 50% 50%;
+      animation: driftFigure 42s linear infinite;
+      will-change: transform;
+    }
+
+    .floating-figure svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.06));
+    }
+
+    @keyframes driftFigure {
+      0% {
+        transform: translate3d(-24vw, 8vh, 0) rotate(-32deg);
+      }
+
+      9% {
+        transform: translate3d(28vw, -18vh, 0) rotate(41deg);
+      }
+
+      18% {
+        transform: translate3d(86vw, 12vh, 0) rotate(109deg);
+      }
+
+      31% {
+        transform: translate3d(104vw, 78vh, 0) rotate(188deg);
+      }
+
+      43% {
+        transform: translate3d(48vw, 104vh, 0) rotate(269deg);
+      }
+
+      55% {
+        transform: translate3d(-22vw, 84vh, 0) rotate(342deg);
+      }
+
+      67% {
+        transform: translate3d(12vw, 38vh, 0) rotate(421deg);
+      }
+
+      79% {
+        transform: translate3d(72vw, -14vh, 0) rotate(508deg);
+      }
+
+      91% {
+        transform: translate3d(112vw, 42vh, 0) rotate(604deg);
+      }
+
+      100% {
+        transform: translate3d(-24vw, 8vh, 0) rotate(688deg);
+      }
+    }
+
+    .archive {
+      position: relative;
+      padding-top: var(--nav-height);
+      min-height: calc(100vh - var(--footer-height));
+      z-index: 2;
+    }
+
+    .index-view {
+      position: relative;
+      z-index: 2;
+      padding: 0 11px var(--footer-height);
+    }
+
+    .year-block {
+      border-top: 0;
+    }
+
+    .profile-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+      padding: 34px 0 22px;
+      border-bottom: var(--line-weight) solid var(--line);
+      color: inherit;
+      transition:
+        border-color 0.22s ease,
+        color 0.22s ease;
+    }
+
+    .profile-label,
+    .profile-copy {
+      font-size: var(--ui-font-size);
+      line-height: 1.08;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .year-label {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      min-height: 35px;
+      padding: 3px 0 4px 169px;
+      border-bottom: var(--line-weight) solid var(--line);
+      font-size: var(--ui-font-size);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      transition:
+        border-color 0.22s ease,
+        color 0.22s ease;
+    }
+
+    .year-label div:last-child {
+      display: none;
+    }
+
+    .project-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: center;
+      min-height: 35px;
+      padding: 3px 0 4px;
+      border-bottom: var(--line-weight) solid var(--line);
+      color: inherit;
+      z-index: 4;
+      transition:
+        color 0.12s ease,
+        border-color 0.22s ease,
+        padding-left 0.12s ease,
+        letter-spacing 0.12s ease;
+    }
+
+    .project-row:hover,
+    .project-row.is-active {
+      color: var(--active);
+      letter-spacing: -0.025em;
+    }
+
+    .project-title {
+      font-size: var(--ui-font-size);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: inherit;
+      width: fit-content;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+
+    .project-type,
+    .project-ref {
+      font-size: var(--ui-font-size);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: inherit;
+      opacity: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-stage {
+      position: fixed;
+      top: 18vh;
+      left: 31vw;
+      width: 48vw;
+      height: 62vh;
+      z-index: 3;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      mix-blend-mode: normal;
+    }
+
+    .preview-card {
+      width: min(100%, 760px);
+      height: min(100%, 620px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: translateY(10px) rotate(-1.5deg) scale(0.96);
+      transition:
+        opacity 0.18s ease,
+        transform 0.18s ease;
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.18));
+    }
+
+    .preview-card.is-visible {
+      opacity: 0.96;
+      transform: translateY(0) rotate(-1.5deg) scale(1);
+    }
+
+    .preview-card svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .grid-view {
+      display: none;
+      position: relative;
+      z-index: 5;
+      padding: calc(var(--nav-height) + 18px) 10px 80px;
+    }
+
+    .grid-view.is-visible {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .grid-card {
+      min-height: 420px;
+      border: var(--line-weight) solid currentColor;
+      display: flex;
+      flex-direction: column;
+      background: color-mix(in srgb, var(--bg) 84%, white);
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .grid-image {
+      height: 300px;
+      border-bottom: var(--line-weight) solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .grid-image svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .grid-info {
+      padding: 8px;
+    }
+
+    .grid-title {
+      font-size: clamp(12px, 1.6vw, 17px);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+    }
+
+    .grid-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 400;
+      opacity: 0.75;
+    }
+
+    .detail {
+      display: none;
+      min-height: 100vh;
+      padding: calc(var(--nav-height) + 20px) 10px 80px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .detail.is-visible {
+      display: block;
+    }
+
+    .detail-header {
+      display: grid;
+      grid-template-columns: 1.4fr 0.6fr;
+      gap: 24px;
+      border-bottom: var(--line-weight) solid currentColor;
+      padding-bottom: 18px;
+    }
+
+    .detail-title {
+      font-size: clamp(15px, 3vw, 27px);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      margin: 0;
+      max-width: 1050px;
+    }
+
+    .detail-meta {
+      font-size: clamp(12px, 1.3vw, 14px);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-concept {
+      margin-top: 18px;
+      max-width: 1100px;
+      font-size: clamp(12px, 1.8vw, 15px);
+      line-height: 1.05;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-concept a {
+      text-decoration: underline;
+      text-underline-offset: 0.12em;
+    }
+
+    .detail-layout {
+      margin-top: 60px;
+      display: grid;
+      grid-template-columns: 0.75fr 1.25fr;
+      gap: 24px;
+      border-top: var(--line-weight) solid currentColor;
+    }
+
+    .section-title {
+      padding-top: 10px;
+      font-size: clamp(12px, 1.7vw, 15px);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .section-body {
+      padding-top: 12px;
+      font-size: clamp(11px, 1.1vw, 12px);
+      line-height: 1.2;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .media-placeholder {
+      margin-top: 12px;
+      min-height: 440px;
+      border: var(--line-weight) solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .media-placeholder svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 40px;
+      border-top: var(--line-weight) solid currentColor;
+      padding-top: 8px;
+      font-size: clamp(12px, 1.5vw, 14px);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      cursor: pointer;
+    }
+
+    .about-panel {
+      display: none;
+      position: fixed;
+      inset: var(--nav-height) 0 0 auto;
+      width: min(560px, 100vw);
+      background-color: var(--bg);
+      color: var(--fg);
+      z-index: 80;
+      border-left: var(--line-weight) solid currentColor;
+      padding: 12px;
+      overflow: auto;
+      transition:
+        background-color 0.22s ease,
+        color 0.22s ease,
+        border-color 0.22s ease;
+    }
+
+    .about-panel.is-visible {
+      display: block;
+    }
+
+    .about-panel h2 {
+      margin: 0 0 24px;
+      font-size: 13pt;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .about-panel p {
+      margin: 0 0 18px;
+      font-size: 12px;
+      line-height: 1.2;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .about-section {
+      margin-bottom: 28px;
+    }
+
+    .about-section h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      border-bottom: var(--line-weight) solid currentColor;
+      padding-bottom: 6px;
+    }
+
+    .about-item {
+      margin: 0 0 14px;
+      font-size: 12px;
+      line-height: 1.22;
+      letter-spacing: -0.02em;
+    }
+
+    .about-item strong {
+      font-weight: 400;
+    }
+
+    .about-meta {
+      opacity: 0.72;
+    }
+
+    .close-about {
+      margin-top: 30px;
+      font-size: 12px;
+      font-weight: 400;
+      border-top: var(--line-weight) solid currentColor;
+      padding-top: 8px;
+    }
+
+    .page-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: center;
+      gap: 24px;
+      height: var(--footer-height);
+      padding: 4px 11px 5px;
+      position: fixed;
+      left: 0;
+      width: 100%;
+      bottom: 0;
+      background-color: var(--bg);
+      border-top: 0;
+      font-size: var(--ui-font-size);
+      line-height: 1;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      z-index: 6;
+      transition:
+        background-color 0.22s ease,
+        color 0.22s ease;
+    }
+
+    .footer-year {
+      display: none;
+    }
+
+    .footer-links {
+      display: contents;
+    }
+
+    .footer-social {
+      justify-self: start;
+    }
+
+    .footer-top {
+      justify-self: end;
+      font-size: var(--ui-font-size);
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .footer-date {
+      font-size: var(--kept-font-size);
+    }
+
+    .page-footer a,
+    .page-footer button {
+      color: inherit;
+      background: none;
+      border: 0;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      opacity: 1;
+    }
+
+    .page-footer button {
+      padding: 0;
+    }
+
+    .scroll-track {
+      display: none;
+      position: fixed;
+      right: 12px;
+      top: var(--nav-height);
+      bottom: 12px;
+      width: 8px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.08);
+      z-index: 12;
+    }
+
+    .scroll-thumb {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      height: 64px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.18);
+      transition: background-color 0.15s ease;
+    }
+
+    .scroll-thumb.dragging {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .is-hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      :root {
+        --nav-height: 30px;
+        --footer-height: 36px;
+        --ui-font-size: 13px;
+        --kept-font-size: 16px;
+      }
+
+      .nav {
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .nav-center {
+        gap: 8px;
+      }
+
+      .year-label {
+        grid-template-columns: 1fr;
+        min-height: 30px;
+        padding-left: 84px;
+      }
+
+      .profile-strip {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 28px 0 18px;
+      }
+
+      .project-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+        min-height: 39px;
+        padding-top: 4px;
+        padding-bottom: 5px;
+      }
+
+      .project-title {
+        white-space: normal;
+      }
+
+      .page-footer {
+        grid-template-columns: 1fr auto auto;
+        gap: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .floating-figure {
+        width: clamp(110px, 34vw, 170px);
+      }
+
+      .preview-stage {
+        top: 37vh;
+        left: 8vw;
+        width: 86vw;
+        height: 38vh;
+        opacity: 0.75;
+      }
+
+      .grid-view.is-visible {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-card {
+        min-height: 360px;
+      }
+
+      .grid-image {
+        height: 240px;
+      }
+
+      .detail-header {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-layout {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 36px;
+      }
+
+      .media-placeholder {
+        min-height: 300px;
+      }
+
+      .about-panel {
+        width: 100vw;
+        border-left: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .floating-figure {
+        animation: none;
+        transform: translate3d(58vw, 28vh, 0) rotate(-12deg);
+      }
+    }
+  </style>
 </head>
+
 <body>
-<div class="app">
-  <div class="titlebar"><div class="traffic"><span></span><span></span><span></span></div><span id="windowTitle">label myself</span></div>
-  <div class="toolbar">
-    <div class="toolgroup">
-      <div class="topbtn" id="openImageBtn"><div class="ico folder">▣</div><div>打开<br>图片</div></div>
-      <div class="topbtn" id="openDirBtn"><div class="ico folder">▣</div><div>打开<br>文件夹</div></div>
-    </div>
-    <div class="toolgroup">
-      <div class="topbtn" id="prevBtn"><div class="ico gray">◀</div><div>上一张</div></div>
-      <div class="topbtn" id="nextBtn"><div class="ico gray">▶</div><div>下一张</div></div>
-      <div class="topbtn" id="saveBtn"><div class="ico gray">▣</div><div>保存</div></div>
-      <div class="topbtn" id="deleteFileBtn"><div class="ico red">⌧</div><div>删除<br>图片</div></div>
-    </div>
-    <div class="toolgroup">
-      <div class="topbtn disabled"><div class="ico gray">✎</div><div>编辑<br>多边形</div></div>
-      <div class="topbtn" id="duplicateBtn"><div class="ico gray">▣</div><div>复制<br>标注</div></div>
-      <div class="topbtn" id="deleteShapeBtn"><div class="ico red">🗑</div><div>删除<br>标注</div></div>
-      <div class="topbtn" id="undoBtn"><div class="ico gray">↶</div><div>撤销</div></div>
-      <div class="topbtn" id="redoBtn"><div class="ico gray">↷</div><div>重做</div></div>
-    </div>
-    <div class="toolgroup">
-      <div class="topbtn" id="fitBtn"><div class="ico blue">▣</div><div>适应<br>窗口</div></div>
-      <div class="zoom-box"><span>缩放</span><input id="zoomInput" value="100 %" /></div>
-      <div class="rangegroup">
-        <label>亮度</label><input id="brightness" type="range" min="40" max="180" value="100">
-        <label>对比度</label><input id="contrast" type="range" min="40" max="180" value="100">
+  <div class="site">
+    <header class="nav">
+      <button class="nav-left" id="homeButton">Qiu Wanqing</button>
+
+      <div class="nav-center">
+        <button class="toggle is-active" id="indexButton">Index</button>
+        <button class="toggle" id="gridButton">Grid</button>
       </div>
+
+      <button class="nav-right" id="aboutButton">About</button>
+    </header>
+
+    <div class="floating-figure" aria-hidden="true">
+      <svg id="floating-figure-art" data-name="Floating Figure Art" xmlns="http://www.w3.org/2000/svg" width="832.7" height="658.66" viewBox="0 0 832.7 658.66">
+        <path d="M355.62,527.18c-17.44-1.13-34.87-2.53-52.39-1.93-11.91,5.64-19.21,14.97-32.01,19.94-17.84,6.93-58.83,8.71-63.02-15.95-1.62-9.54,4.09-15.93-6.51-22.47l-58.34-21.59c-1.17.12-6.19,4.37-7.55,5.52-19.92,16.84-45.63,39.29-63.48,57.88-15.09,15.71-23.86,34.85-37.44,50.01-6.46,7.21-15.21,12.44-25.42,10.49-3.24-.62-7.68-8.66-8.29-11.69-3.04-15.1.18-29.9,5.59-43.91,11.9-30.82,28.55-65.84,43.28-95.59,7.18-14.5,9.15-21.42,22.92-31.03,17.74-12.38,38.02-21.58,55.55-34.03-3.2-9.22-5.64-18.67-7.39-28.29-2.23-12.32-2.28-31.59-5.54-42.42-.92-3.07-7.53-9.6-9.76-13.21-20.36-32.88-7.04-88.47,1.51-124.43,9.24-38.83,19.41-65.11,49.45-92.42,15.88-14.43,33.29-29.64,50.65-42.26,15.73-11.44,46.31-34.56,64.05-38.85,28.04-6.78,68.14-13.07,96.6-10.27,25.93,2.54,47.11,12.9,73.93,10.96,32.11-2.32,65.47-12,97.85-4.91,10.44,2.29,20.94,6.81,31.53,9.43,14.79,3.66,30.02,4.85,44.6,8.35,26.55,6.36,70.05,30.11,90.76,48.11,22.02,19.14,57.42,67.08,64.79,95.06,7.21,27.37,10.58,66.43,14.52,95.38,3.07,22.57,7.4,47.33,9.12,69.8.89,11.59-.3,8.55-4.52,17.44-10.08,21.23,7.71,36.12,17.33,52.68,27.9,48.07,29.43,133.1,18.06,186.51-5.7,26.75-21.48,10.24-31.82-1.9-18.47-21.68-35.41-50.14-43.25-77.64-7.98-27.99-7.05-57.34-8.18-86.17l-2.94-2.46c-15.81,18.96-22.18,43.97-51.07,46.89-8.4.85-21.53-.11-30.92.05-19.74.34-40.55-3.96-56.5,9.44-20.94,17.58-36.27,33.17-62.25,44.65-7.92,3.5-16.32,5.11-23.86,8.14-5.19,2.09-9.16,9.71-9.79,15.16-2.36,20.58-.83,43.22-1.95,63.99-.42,7.84-.68,21.64-2.25,28.73-2.88,13.08-34.62,16.27-45.38,17.57-13.31,1.6-33.81,4.03-46.58,1.87-14.72-2.48-44.04-15.47-50.19-29.74-1.56-3.62-3.51-11.73-3.51-15.47v-85.42ZM324.78,503.06l46.36-.9c48.53-.96,116.12,18.21,160.99-2.77,18.72-8.75,40.05-24.13,51.08-41.83,9.18-14.72,8.19-28.59,30.7-27.32,30.39,1.72,49.37,13.48,74.92-11.93,25.83-25.68,40.11-96.38,0-112.95-19.31-7.97-36.36.5-43.26,19.73-4.38,12.19.22,18.99-1.47,29.51-.49,3.07-7.98,22.52-9.69,24.28-2.54,2.61-7.01,1-10.43,1.56-13.94,2.26-44.3,19.4-54.61,29.31s-25.41,44.28-37.64,16.75l-25.52-128.34c-1.48-3.41-2.96-7.74-6.46-9.52-9.85-5.02-39.94-10.21-51.87-12.07-82.98-12.92-164.5-14.71-247.14-33.6-13.29-3.04-32.09-9.92-44.72-11.27-5.93-.63-8.66.69-11.85,5.62-20.07,30.97-11.4,108.04,1.88,141.28,1.91,4.79,5.1,9.35,6.94,14.04,7.03,17.89.19,33.93,1.83,52.12.43,4.79,3.68,18.97,6.52,22.46,5.95,7.32,37.54,12.59,47.2,16.85l2.19-.28,30.98-52c-7.94-1.37-14.87-2.02-19.97-8.99-6.18-8.45-2.76-21.04,8.76-18.73,42.28,15.37,85.92,27.06,127.09,45.28l-3.85,20.34c-16.93.49-19.71,11.95-27.26,23.89-.87,1.38-2.95,2.8-3.33,3.63-.34.76,1.36,5.72,1.63,5.89ZM320.65,458.25c-16.61-2.8-26.78-14.88-45-11.54-3.66.67-24.11,8.96-26.87,11.09-6.81,5.25-19.96,38.08-20.93,47.01-1.69,15.61,4.88,26,21.41,25.42,23.65-.82,52-41.45,64.22-59.68,1.12-1.66,8.1-11.39,7.18-12.3ZM483.22,536.45c-4.79-4.73-27-3.61-34.2-6.26l-69.42-5.01c-1.16,1.21-1.58,28.95-2.01,33.47-2.55,26.81-13.33,55.78,17.12,71.82,16.06,8.46,58.22,8.4,76.07,4.38,6.97-1.57,10.74-5.18,11.64-12.33,1.71-13.52,1.53-30.01,2.09-43.86.47-11.58,2.31-24.33,1.02-36-.18-1.64-1.21-5.11-2.3-6.19Z"/>
+        <path d="M324.78,503.06c-.27-.18-1.97-5.13-1.63-5.89.37-.84,2.45-2.25,3.33-3.63,7.55-11.94,10.33-23.4,27.26-23.89l3.85-20.34c-41.17-18.21-84.81-29.91-127.09-45.28-11.52-2.31-14.94,10.28-8.76,18.73,5.1,6.97,12.03,7.62,19.97,8.99l-30.98,52-2.19.28c-9.66-4.26-41.25-9.53-47.2-16.85-2.83-3.49-6.08-17.67-6.52-22.46-1.64-18.19,5.19-34.23-1.83-52.12-1.84-4.69-5.03-9.25-6.94-14.04-13.27-33.24-21.94-110.31-1.88-141.28,3.2-4.93,5.93-6.25,11.85-5.62,12.63,1.35,31.43,8.23,44.72,11.27,82.65,18.89,164.16,20.68,247.14,33.6,11.93,1.86,42.03,7.05,51.87,12.07,3.5,1.78,4.98,6.11,6.46,9.52l25.52,128.34c12.22,27.54,27.52-7.02,37.64-16.75s40.68-27.05,54.61-29.31c3.42-.55,7.9,1.05,10.43-1.56,1.71-1.75,9.19-21.21,9.69-24.28,1.69-10.52-2.91-17.31,1.47-29.51,6.9-19.24,23.95-27.71,43.26-19.73,40.11,16.57,25.84,87.27,0,112.95-25.55,25.4-44.53,13.64-74.92,11.93-22.51-1.27-21.52,12.59-30.7,27.32-11.03,17.7-32.36,33.08-51.08,41.83-44.87,20.98-112.46,1.82-160.99,2.77l-46.36.9ZM186.3,368.78c-5.39-.32-14.18,7.74-14.57,13.05-.97,13.37,19.1,13.38,28.08,11.02,2.19-1.37-1.64-11.25-2.66-13.42-1.74-3.72-6.37-10.39-10.85-10.65ZM393.29,392.51c-5.24,1.17-8.48,5.82-7.67,11.21,1.65,11.02,24.86,16.82,32.98,11.1,1.05-.74,8.68-8.6,8.85-9.23.54-2.03-8.84-11.56-10.59-12.08-2.5-.74-20.88-1.59-23.56-.99Z" fill="#fff"/>
+        <path d="M483.22,536.45c1.1,1.09,2.12,4.55,2.3,6.19,1.3,11.67-.54,24.42-1.02,36-.57,13.85-.38,30.34-2.09,43.86-.91,7.16-4.67,10.76-11.64,12.33-17.85,4.02-60,4.08-76.07-4.38-30.45-16.04-19.67-45.01-17.12-71.82.43-4.52.85-32.26,2.01-33.47l69.42,5.01c7.2,2.65,29.41,1.53,34.2,6.26Z" fill="#fff"/>
+        <path d="M320.65,458.25c.93.91-6.06,10.63-7.18,12.3-12.22,18.23-40.58,58.86-64.22,59.68-16.53.57-23.1-9.81-21.41-25.42.97-8.92,14.12-41.76,20.93-47.01,2.76-2.13,23.21-10.42,26.87-11.09,18.22-3.34,28.39,8.74,45,11.54Z" fill="#fff"/>
+        <path d="M393.29,392.51c2.68-.6,21.06.25,23.56.99,1.75.52,11.12,10.05,10.59,12.08-.17.64-7.8,8.5-8.85,9.23-8.12,5.72-31.33-.08-32.98-11.1-.81-5.39,2.43-10.04,7.67-11.21Z"/>
+        <path d="M186.3,368.78c4.48.27,9.11,6.94,10.85,10.65,1.02,2.17,4.85,12.05,2.66,13.42-8.99,2.36-29.05,2.35-28.08-11.02.39-5.31,9.18-13.38,14.57-13.05Z"/>
+      </svg>
+    </div>
+
+    <main class="archive" id="archivePage">
+      <section class="index-view" id="indexView"></section>
+
+      <section class="grid-view" id="gridView"></section>
+
+      <div class="preview-stage">
+        <div class="preview-card" id="previewCard"></div>
+      </div>
+    </main>
+
+    <section class="detail" id="detailPage"></section>
+
+    <aside class="about-panel" id="aboutPanel">
+      <h2>About</h2>
+      <section class="about-section">
+        <h3>Education</h3>
+        <div class="about-item">
+          <strong>Central Academy of Fine Arts</strong><br>
+          BFA, Experimental Art<br>
+          Main courses: Contemporary Art / Interactive Installation
+        </div>
+        <div class="about-item">
+          <strong>Rhode Island School of Design</strong><br>
+          Undergraduate Exchange, Graphic Design<br>
+          Main courses: Graphic Design
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h3>Experience</h3>
+        <div class="about-item">
+          <strong>Aranya</strong><br>
+          Graphic Design Intern, Brand Center
+        </div>
+        <div class="about-item">
+          <strong>UDL</strong><br>
+          Graphic Designer
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h3>Awards</h3>
+        <div class="about-item">
+          GDC Award 2025, New Star Merit
+        </div>
+      </section>
+
+      <section class="about-section">
+        <h3>Exhibitions</h3>
+        <div class="about-item">
+          <strong>Central Academy of Fine Arts Graduation Exhibition</strong><br>
+          <span class="about-meta">2026/05-2026/06, Beijing, CAFA Art Museum</span>
+        </div>
+        <div class="about-item">
+          <strong>GDC Design Award 2025 Winning Works Exhibition</strong><br>
+          <span class="about-meta">2025/12/07-2026/01/05, Shenzhen, OCT-LOFT</span>
+        </div>
+        <div class="about-item">
+          <strong>The Other of Jingdezhen</strong><br>
+          <span class="about-meta">2024/04-2024/06, Jingdezhen, Jingdezhen Ceramic University Art Museum</span>
+        </div>
+        <div class="about-item">
+          <strong>National Science Popularization Education Base | Ocean Sensors: Marine-Themed Science and Art Exhibition</strong><br>
+          <span class="about-meta">2023/09-2023/10, Beijing, CAFA Art Museum</span>
+        </div>
+      </section>
+      <button class="close-about" id="closeAbout">Close</button>
+    </aside>
+
+    <footer class="page-footer" id="pageFooter">
+      <div class="footer-item footer-date" id="footerDate">Sunday, June 28, 2026</div>
+      <div class="footer-item footer-year" id="footerYear">2026</div>
+      <div class="footer-item footer-links">
+        <a class="footer-social" href="https://instagram.com" target="_blank" rel="noreferrer">Instagram</a>
+        <button class="footer-top" id="scrollTopButton" aria-label="Scroll to top">↑</button>
+      </div>
+    </footer>
+
+    <div class="scroll-track" id="scrollTrack">
+      <div class="scroll-thumb" id="scrollThumb"></div>
     </div>
   </div>
-  <div class="main">
-    <div class="leftbar" id="leftTools">
-      <div class="sidebtn active" data-tool="polygon"><div class="sideico">⌬</div><div>创建多边形</div></div>
-      <div class="sidebtn" data-tool="freehand"><div class="sideico">〰</div><div>创建自由绘制</div></div>
-      <div class="sidebtn" data-tool="rectangle"><div class="sideico">▭</div><div>创建矩形</div></div>
-      <div class="sidebtn" data-tool="circle"><div class="sideico">◯</div><div>创建圆形</div></div>
-      <div class="sidebtn" data-tool="point"><div class="sideico">⌘</div><div>创建点</div></div>
-      <div class="sidebtn" data-tool="line"><div class="sideico">╱</div><div>创建线段</div></div>
-      <div class="sidebtn" data-tool="linestrip"><div class="sideico">⌇</div><div>创建折线</div></div>
-    </div>
-    <div class="workspace">
-      <div class="canvaswrap" id="canvaswrap">
-        <div class="stage" id="stage">
-          <div class="imageArea" id="imageArea">
-            <img id="image" alt="" />
-            <svg id="overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <script>
+    const projects = [
+      {
+        year: "2024",
+        title: "Praesent Porttitor Venenatis",
+        type: "Web Tool",
+        ref: "Ref. R/ANV-310",
+        slug: "dada-poem",
+        bg: "#ff7a2f",
+        fg: "#18358f",
+        active: "#000000",
+        concept: "A mobile web tool for collecting accidental text from the environment and turning it into poems.",
+        overview: "DADA POEM extends the idea of a poem toolkit into a mobile interface. It asks the viewer to look for language already existing around them, then reassemble it into a poem.",
+        process: "The project uses the phone camera as a collecting device. Environmental text becomes raw material. The interface slows down the act of seeing, selecting, saving, and composing.",
+        outcome: "The outcome is both a website and a poetic method: a tool for finding language in the ordinary world.",
+        art: {
+          bg: "#ff7a2f",
+          a: "#18358f",
+          b: "#ffe1c2",
+          c: "#f73263",
+          label: "DADA / POEM"
+        }
+      },
+      {
+        year: "2024",
+        title: "Nulla Varius Leo NEX",
+        type: "Interaction System",
+        ref: "Ref. R/FTH-053",
+        slug: "supermarket-birdwatching",
+        bg: "#12d857",
+        fg: "#123c9c",
+        active: "#000000",
+        concept: "A playful observation system that treats supermarket packaging as a field guide for hidden birds.",
+        overview: "The project transforms the supermarket into a birdwatching site. Birds may appear as logos, illustrations, fragments, wing-like forms, shadows, or false sightings.",
+        process: "The viewer uses the phone like binoculars, spots a bird, records the sighting, and receives a barcode-like observation stamp.",
+        outcome: "The work becomes a field guide for consumer space: a system for looking more slowly inside everyday packaging environments.",
+        art: {
+          bg: "#12d857",
+          a: "#123c9c",
+          b: "#f7e6ff",
+          c: "#ffcc00",
+          label: "BIRD / WATCH"
+        }
+      },
+      {
+        year: "2024",
+        title: "Quam: Sed Eros Malesuada",
+        type: "Research Idea",
+        ref: "R/HLT-904",
+        slug: "artificial-winter-indoors",
+        bg: "#bfe7ff",
+        fg: "#004b74",
+        active: "#ffffff",
+        concept: "A research idea about air-conditioned interiors as artificial seasons.",
+        overview: "This project looks at cold indoor spaces, artificial climate, and the strange feeling of experiencing winter inside summer.",
+        process: "It may collect sounds, temperatures, advertisements, fluorescent light, vents, and bodily reactions to indoor climate.",
+        outcome: "The work may become an installation, website, or visual essay about climate as an interior design material.",
+        art: {
+          bg: "#bfe7ff",
+          a: "#004b74",
+          b: "#ffffff",
+          c: "#7dd8ff",
+          label: "INDOOR / WINTER"
+        }
+      },
+      {
+        year: "2024",
+        title: "Pretium EU Purus",
+        type: "Book + Digital Tool",
+        ref: "X/BXN-014",
+        slug: "poem-toolkit",
+        bg: "#f2dfb3",
+        fg: "#2b241b",
+        active: "#cc3300",
+        concept: "A book and digital toolkit for learning poetic forms through structure, imitation, and found language.",
+        overview: "Poem Toolkit is built around poetic structures, writing exercises, and ways of composing with the world.",
+        process: "The project combines book design, typography, interface experiments, hover states, and poetic form as a system.",
+        outcome: "The final work is a toolkit that makes poetry feel structural, playful, and usable.",
+        art: {
+          bg: "#f2dfb3",
+          a: "#2b241b",
+          b: "#fff8e8",
+          c: "#cc3300",
+          label: "POEM / TOOLKIT"
+        }
+      },
+      {
+        year: "2024",
+        title: "Praesent Pellentesque",
+        type: "Poster + Motion",
+        ref: "Ref. X/QOR-809",
+        slug: "bootleg-collection",
+        bg: "#2036ff",
+        fg: "#ff4f4f",
+        active: "#ffffff",
+        concept: "A visual study of counterfeit game cartridges, mistranslation, and unstable identity.",
+        overview: "The project studies bootleg game objects as unstable visual identities: copied, translated, distorted, and rebranded.",
+        process: "Posters and motion experiments use folding, force identity, wrong names, and fake systems as visual strategies.",
+        outcome: "The work becomes a collection of misread identities and unofficial visual culture.",
+        art: {
+          bg: "#2036ff",
+          a: "#ff4f4f",
+          b: "#ffe900",
+          c: "#111111",
+          label: "BOOT / LEG"
+        }
+      },
+      {
+        year: "2024",
+        title: "Curabitur Facilisis N° 01 — EST",
+        type: "Data Visualization",
+        ref: "Ref. X/CRQ-081",
+        slug: "providence-station-mapping",
+        bg: "#1c1c1c",
+        fg: "#d6ff77",
+        active: "#ffffff",
+        concept: "A mapping project about the train station as a public living room.",
+        overview: "The project observes movement, waiting, direction, sound, and invisible communities inside Providence Station.",
+        process: "Data is collected through photos, videos, audio, sketches, and observation, then translated into maps and visual systems.",
+        outcome: "The station becomes a social diagram: a place where temporary communities appear and disappear.",
+        art: {
+          bg: "#1c1c1c",
+          a: "#d6ff77",
+          b: "#ffffff",
+          c: "#4b70ff",
+          label: "STATION / MAP"
+        }
+      },
+      {
+        year: "2024",
+        title: "Lobortis Purus Aenean",
+        type: "Visual + Packaging",
+        ref: "Ref. X/SHF-902",
+        slug: "commercial-work",
+        bg: "#eeeeee",
+        fg: "#111111",
+        active: "#ff3b00",
+        concept: "Selected visual, packaging, and event-related commercial design work.",
+        overview: "This section collects selected studio work across visual systems, gift packaging, campaign materials, and brand applications.",
+        process: "The work involves visual research, layout systems, production details, packaging adaptation, and client-facing design execution.",
+        outcome: "This section shows practical design ability, production awareness, and visual consistency.",
+        art: {
+          bg: "#eeeeee",
+          a: "#111111",
+          b: "#ffffff",
+          c: "#ff3b00",
+          label: "STUDIO / WORK"
+        }
+      },
+      {
+        year: "2023",
+        title: "Lorem Ipsum Dolor Sit Amet Hendrerit",
+        type: "Poster System",
+        ref: "Ref. R/XTR-082",
+        slug: "aranya-theatre-festival",
+        bg: "#ffe1ec",
+        fg: "#005b8f",
+        active: "#ff5500",
+        concept: "A set of theatre festival visual materials and poster system explorations.",
+        overview: "The project collects visual updates and theatre-related design materials within a festival context.",
+        process: "The process involves poster adaptation, image-text relation, event information hierarchy, and visual consistency.",
+        outcome: "The work shows how a visual system can support cultural programming and public communication.",
+        art: {
+          bg: "#ffe1ec",
+          a: "#005b8f",
+          b: "#ffffff",
+          c: "#ff5500",
+          label: "THEATRE / POSTER"
+        }
+      },
+      {
+        year: "2023",
+        title: "Ut Volutpat Pharetra",
+        type: "Drawing System",
+        ref: "R/PRT-017",
+        slug: "grid-drawing-studies",
+        bg: "#ffffff",
+        fg: "#333333",
+        active: "#0000ff",
+        concept: "A drawing system based on repeated grids, lines, and visual rules.",
+        overview: "This project studies how repeated grid structures can produce images through constraint and variation.",
+        process: "The work uses a group of grid types, repeated drawings, and rule-based image construction.",
+        outcome: "The result is a visual archive of systematic drawing methods.",
+        art: {
+          bg: "#ffffff",
+          a: "#333333",
+          b: "#e8e8e8",
+          c: "#0000ff",
+          label: "GRID / DRAW"
+        }
+      },
+      {
+        year: "2023",
+        title: "Bibendum NUNC",
+        type: "Publication",
+        ref: "Ref. R/CXX-500",
+        slug: "bibendum-nunc",
+        bg: "#ffffff",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A compact publication study for typographic rhythm and reference systems.",
+        overview: "This entry acts as a placeholder portfolio case with simple editorial structure.",
+        process: "The work combines index logic, repeated text, and restrained typographic rules.",
+        outcome: "A calm archive item designed to sit inside a dense portfolio index.",
+        art: {
+          bg: "#ffffff",
+          a: "#333333",
+          b: "#eeeeee",
+          c: "#777777",
+          label: "BIBENDUM / NUNC"
+        }
+      },
+      {
+        year: "2023",
+        title: "Praesent Porttitor Venenatis",
+        type: "Identity System",
+        ref: "Ref. R/ANV-310",
+        slug: "praesent-porttitor-venenatis-2023",
+        bg: "#eeeeee",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A visual system placeholder for portfolio indexing and archive detail pages.",
+        overview: "The project tests how repeated metadata can remain legible at large scale.",
+        process: "Rows, references, and typographic density are treated as the main material.",
+        outcome: "A portfolio entry that supports both index and grid browsing.",
+        art: {
+          bg: "#eeeeee",
+          a: "#333333",
+          b: "#ffffff",
+          c: "#999999",
+          label: "PORTTITOR / 2023"
+        }
+      },
+      {
+        year: "2023",
+        title: "Nulla Varius Leo NEX",
+        type: "Archive Entry",
+        ref: "Ref. R/FTH-053 N° 02",
+        slug: "nulla-varius-leo-nex-02",
+        bg: "#f7f7f7",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A second catalogue entry using reference numbers as a visual anchor.",
+        overview: "The work extends the demo index with a repeatable archive format.",
+        process: "Spacing, title length, and reference labels are tested across view widths.",
+        outcome: "A quiet portfolio row with enough metadata for sorting and browsing.",
+        art: {
+          bg: "#f7f7f7",
+          a: "#333333",
+          b: "#ffffff",
+          c: "#777777",
+          label: "NULLA / NEX"
+        }
+      },
+      {
+        year: "2023",
+        title: "Quam: Sed Eros Malesuada",
+        type: "Research Note",
+        ref: "R/HLT-904",
+        slug: "quam-sed-eros-malesuada-2023",
+        bg: "#f5f5f5",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A compact research note formatted as a portfolio object.",
+        overview: "The entry supports quick scanning in the index and richer reading in detail view.",
+        process: "Its structure follows the same title and reference pairing as the rest of the archive.",
+        outcome: "A reusable row style for repeated portfolio information.",
+        art: {
+          bg: "#f5f5f5",
+          a: "#333333",
+          b: "#ffffff",
+          c: "#888888",
+          label: "EROS / 2023"
+        }
+      },
+      {
+        year: "2023",
+        title: "Pretium EU Purus",
+        type: "Visual Study",
+        ref: "X/BXN-014",
+        slug: "pretium-eu-purus-2023",
+        bg: "#ffffff",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A minimal visual study for reference-led archive navigation.",
+        overview: "The item is intentionally restrained so the homepage reads like a Cargo index.",
+        process: "The system privileges typographic scale, line weight, and column alignment.",
+        outcome: "A stable index item for a portfolio demo.",
+        art: {
+          bg: "#ffffff",
+          a: "#333333",
+          b: "#eeeeee",
+          c: "#777777",
+          label: "PRETIUM / PURUS"
+        }
+      },
+      {
+        year: "2023",
+        title: "Praesent Pellentesque",
+        type: "Poster Study",
+        ref: "Ref. X/QOR-809",
+        slug: "praesent-pellentesque-2023",
+        bg: "#f0f0f0",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A poster study presented through a spare archive interface.",
+        overview: "The row demonstrates how shorter titles sit inside the two-column system.",
+        process: "The visual language comes from line-based indexing and large condensed spacing.",
+        outcome: "A readable archive item that matches the demo portfolio style.",
+        art: {
+          bg: "#f0f0f0",
+          a: "#333333",
+          b: "#ffffff",
+          c: "#999999",
+          label: "PELLENTESQUE"
+        }
+      },
+      {
+        year: "2023",
+        title: "Curabitur Facilisis N° 01 — EST",
+        type: "Edition",
+        ref: "Ref. X/CRQ-081",
+        slug: "curabitur-facilisis-01-est-2023",
+        bg: "#f7f7f7",
+        fg: "#333333",
+        active: "#000000",
+        concept: "An edition entry built around serial numbering and catalogue rhythm.",
+        overview: "The title uses numbering to test line length and typographic fit.",
+        process: "The page keeps visual decoration low so metadata carries the interface.",
+        outcome: "A portfolio listing suitable for dense review and navigation.",
+        art: {
+          bg: "#f7f7f7",
+          a: "#333333",
+          b: "#ffffff",
+          c: "#777777",
+          label: "FACILISIS / EST"
+        }
+      },
+      {
+        year: "2023",
+        title: "Lobortis Purus Aenean",
+        type: "Archive Entry",
+        ref: "Ref. X/SHF-902",
+        slug: "lobortis-purus-aenean-2023",
+        bg: "#ffffff",
+        fg: "#333333",
+        active: "#000000",
+        concept: "A final entry in the demo list, matching the screenshot's closing rhythm.",
+        overview: "The work rounds out the archive with repeated references and consistent spacing.",
+        process: "The interface is tested as a continuous, line-separated list.",
+        outcome: "A simple portfolio item aligned with the Cargo-style homepage.",
+        art: {
+          bg: "#ffffff",
+          a: "#333333",
+          b: "#eeeeee",
+          c: "#777777",
+          label: "LOBORTIS / 2023"
+        }
+      }
+    ];
+
+    projects.splice(0, projects.length, ...[
+      {
+        year: "2026",
+        title: "保质期组成的日历书",
+        type: "书籍设计",
+        ref: "书籍设计",
+        client: "/",
+        slug: "expiry-date-calendar-book",
+        bg: "#f6f0d8",
+        fg: "#222222",
+        active: "#000000",
+        concept: "一个以保质期为时间材料的日历书项目，将日常消费物上的日期重新组织为关于保存、失效与等待的时间系统。",
+        overview: "Category 类别：书籍设计<br>Client 客户：/<br>Year 年份：2026",
+        process: "项目从包装、标签和保质期信息中收集日期，把原本服务于消费判断的数字转化为阅读时间的结构。",
+        outcome: "最终形成一本由保质期组成的日历书，在日常物与时间秩序之间建立新的观看方式。",
+        art: {
+          bg: "#f6f0d8",
+          a: "#222222",
+          b: "#ffffff",
+          c: "#d9482b",
+          label: "EXPIRY / CAL"
+        }
+      },
+      {
+        year: "2026",
+        title: "Birdwatching at Supermarket",
+        type: "数字设计",
+        ref: "数字设计",
+        client: "/",
+        slug: "birdwatching-at-supermarket",
+        bg: "#d7ff73",
+        fg: "#18358f",
+        active: "#000000",
+        concept: "一个把超市包装空间转化为观鸟场域的交互项目。用户在消费环境中寻找隐藏的鸟类图像、标志与误读形态。",
+        overview: "Category 类别：数字设计<br>Client 客户：/<br>Year 年份：2026",
+        process: "项目将手机界面作为观察工具，把超市中的图像碎片、包装插画与标识系统重新组织成一套城市观鸟方法。",
+        outcome: "作品形成一个关于观看、消费空间和图像识别的互动档案。",
+        art: {
+          bg: "#d7ff73",
+          a: "#18358f",
+          b: "#ffffff",
+          c: "#ff7a2f",
+          label: "BIRD / WATCH"
+        }
+      },
+      {
+        year: "2025",
+        title: "Ghost Work: View Every Click",
+        type: "数字设计",
+        ref: "数字设计",
+        client: "/",
+        link: "https://qiuwanqing.github.io/GhostWork-test/",
+        slug: "ghost-work-view-every-click",
+        bg: "#111111",
+        fg: "#f2f2f2",
+        active: "#ffffff",
+        concept: "本项目通过一个交互式网站，将人工智能系统背后不可见的人类劳动转化为可被感知的尺度。用户在界面中的每一次点击都会被记录并量化，从而揭示数字系统中被隐藏的微观劳动与责任转移机制。",
+        overview: "Category 类别：数字设计<br>Client 客户：/<br>Year 年份：2025",
+        process: "网站把点击行为作为计量单位，将用户操作和背后的劳动尺度连接起来，让被抽象隐藏的人工劳动重新变得可见。",
+        outcome: "作品以交互界面呈现数字系统中的劳动分配、责任转移和不可见工作。",
+        art: {
+          bg: "#111111",
+          a: "#f2f2f2",
+          b: "#222222",
+          c: "#72ff9f",
+          label: "GHOST / WORK"
+        }
+      },
+      {
+        year: "2025",
+        title: "广州亚热带电影节",
+        type: "形象识别",
+        ref: "形象识别",
+        client: "/",
+        slug: "guangzhou-subtropical-film-festival",
+        bg: "#ff6f3c",
+        fg: "#13351f",
+        active: "#000000",
+        concept: "本项目为广州亚热带电影节设计整体活动视觉系统。视觉概念以热带植物的形态特征与传统剪纸语言为形式来源，通过层叠、镂空与轮廓的组合，构建具有湿热气息与记忆流动感的影像节日视觉氛围，应用于活动主视觉、宣传物料及相关周边设计。",
+        overview: "Category 类别：形象识别<br>Client 客户：/<br>Year 年份：2025",
+        process: "项目提取热带植物、剪纸轮廓和影像节日的空间感，发展出层叠、镂空和色块组合的视觉系统。",
+        outcome: "视觉系统应用于活动主视觉、宣传物料及相关周边设计。",
+        art: {
+          bg: "#ff6f3c",
+          a: "#13351f",
+          b: "#ffe7d6",
+          c: "#1bb35e",
+          label: "SUBTROPICAL"
+        }
+      },
+      {
+        year: "2025",
+        title: "重复与再重复",
+        type: "字体设计 / 书籍设计",
+        ref: "字体设计 / 书籍设计",
+        client: "/",
+        slug: "repeat-and-repeat-again",
+        bg: "#e7e1d8",
+        fg: "#2d2118",
+        active: "#000000",
+        concept: "本项目以账本印刷系统为研究对象，通过对印章把手结构、墨迹渗透、重复盖印痕迹等形式特征的观察与提取，发展出一套实验性字体设计。项目通过持续的印刷实验，探索重复如何在生成秩序的同时引入偏差、纹理与不可预期的变化，并以字体作为回应账本形式与记录逻辑的视觉载体。",
+        overview: "Category 类别：字体设计 / 书籍设计<br>Client 客户：/<br>Year 年份：2025",
+        process: "项目通过印刷实验观察印章结构、墨迹渗透和重复盖印中的偏差，把这些细节转译为字体形态。",
+        outcome: "最终形成一套实验性字体与书籍系统，回应账本的记录逻辑和重复机制。",
+        art: {
+          bg: "#e7e1d8",
+          a: "#2d2118",
+          b: "#ffffff",
+          c: "#6f3b1f",
+          label: "REPEAT"
+        }
+      },
+      {
+        year: "2025",
+        title: "Box Notes",
+        type: "包装设计 / 书籍设计",
+        ref: "包装设计 / 书籍设计",
+        client: "/",
+        slug: "box-notes",
+        bg: "#d9e8ff",
+        fg: "#1b2a41",
+        active: "#000000",
+        concept: "一个关于迁移、安放与保存的实验性项目，通过“盒”这一隐喻，记录在搬迁过程中随身携带的微小事物。作品包含四个部分，探讨如何在漂移与安顿之间，通过物品的象征性意义来重建自我归属感。",
+        overview: "Category 类别：包装设计 / 书籍设计<br>Client 客户：/<br>Year 年份：2025",
+        process: "项目围绕盒子的容纳、保护和分类功能展开，以搬迁中的小物件作为叙事线索。",
+        outcome: "作品由四个部分组成，呈现迁移、安放、保存与归属之间的关系。",
+        art: {
+          bg: "#d9e8ff",
+          a: "#1b2a41",
+          b: "#ffffff",
+          c: "#ffb100",
+          label: "BOX / NOTES"
+        }
+      },
+      {
+        year: "2025",
+        title: "铜版画日志",
+        type: "插画 / 书籍设计",
+        ref: "插画 / 书籍设计",
+        client: "/",
+        slug: "etching-log",
+        bg: "#f0f0f0",
+        fg: "#252525",
+        active: "#000000",
+        concept: "《铜版画日志》记录了铜版刻蚀技法，通过详细的技巧笔记、灵感来源以及一系列名为《圆缺》的铜版画，展示了这一技法的应用与探索。",
+        overview: "Category 类别：插画 / 书籍设计<br>Client 客户：/<br>Year 年份：2025",
+        process: "项目以日志形式整理铜版刻蚀过程、技巧笔记、图像灵感和印刷实验。",
+        outcome: "书籍结合过程记录与《圆缺》系列铜版画，呈现技法学习和图像探索。",
+        art: {
+          bg: "#f0f0f0",
+          a: "#252525",
+          b: "#ffffff",
+          c: "#8b8b8b",
+          label: "ETCHING / LOG"
+        }
+      },
+      {
+        year: "2025",
+        title: "ENDGAME_ERA_2149-X.MEM.EXE",
+        type: "数字设计 / 视频和动态图像",
+        ref: "数字设计 / 视频和动态图像",
+        client: "/",
+        slug: "endgame-era-2149",
+        bg: "#0b1020",
+        fg: "#9cffd9",
+        active: "#ffffff",
+        concept: "这是一个来自未来的“伪档案”项目。它探讨了人工智能不断进化、脱离人类社会后，人与 AI 的关系将如何演变。通过影像、监控和书籍构建了一个加密与解码的循环。装置包括：一段解密过程影像、实时监控的 YOLO 模型、以及一册纸本书记录整个加密与解码的过程。",
+        overview: "Category 类别：数字设计 / 视频和动态图像<br>Client 客户：/<br>Year 年份：2025",
+        process: "项目以未来档案的形式组织影像、监控模型和纸本记录，构建加密与解码的循环叙事。",
+        outcome: "装置包含解密过程影像、实时监控的 YOLO 模型，以及一本记录加密与解码过程的书。",
+        art: {
+          bg: "#0b1020",
+          a: "#9cffd9",
+          b: "#ffffff",
+          c: "#5d5dff",
+          label: "2149 / MEM"
+        }
+      },
+      {
+        year: "2025",
+        title: "DADA POEM",
+        type: "数字设计",
+        ref: "数字设计",
+        client: "/",
+        slug: "dada-poem",
+        bg: "#ff7a2f",
+        fg: "#18358f",
+        active: "#000000",
+        concept: "一个将环境中的偶然文字转化为诗的网页工具。用户通过收集、选择与重组文字，生成属于当下场景的 DADA poem。",
+        overview: "Category 类别：数字设计<br>Client 客户：/<br>Year 年份：2025",
+        process: "项目把手机和网页界面作为文字采集工具，让日常环境中的语言成为诗歌材料。",
+        outcome: "作品形成一个可使用的诗歌生成界面，也是一种重新观看周围文字的方法。",
+        art: {
+          bg: "#ff7a2f",
+          a: "#18358f",
+          b: "#ffe1c2",
+          c: "#f73263",
+          label: "DADA / POEM"
+        }
+      },
+      {
+        year: "2024",
+        title: "曾经的脑洞之一堆非艺术的艺术书",
+        type: "书籍设计 / 艺术书",
+        ref: "书籍设计 / 艺术书",
+        client: "/",
+        slug: "non-art-art-books",
+        bg: "#ffffff",
+        fg: "#333333",
+        active: "#000000",
+        concept: "别称《总体艺术新编》。这是一个围绕“非艺术的艺术书”展开的想法集合，以书籍作为收纳、误读和重新分类的载体。",
+        overview: "Category 类别：书籍设计 / 艺术书<br>Client 客户：/<br>Year 年份：2024",
+        process: "项目从日常材料和非艺术对象中提取结构，把它们重新组织进艺术书的阅读逻辑。",
+        outcome: "形成一组介于档案、书籍和观念草图之间的实验性出版物。",
+        art: {
+          bg: "#ffffff",
+          a: "#333333",
+          b: "#eeeeee",
+          c: "#777777",
+          label: "TOTAL / ART"
+        }
+      }
+    ]);
+
+    projects.splice(0, projects.length, ...[
+      {
+        year: "2026",
+        title: "Watching the Sunset",
+        type: "Installation / Photography",
+        ref: "Installation / Photography",
+        client: "/",
+        slug: "watching-the-sunset",
+        bg: "#f8d27a",
+        fg: "#3b2615",
+        active: "#000000",
+        concept: "The sunset does not happen in the sky, but on a wall illuminated by light. In this work, thirty beams of white light are projected onto the same wall, silent, even, and nearly indistinguishable from one another. To the naked eye, only subtle fluctuations in brightness between different machines can be perceived.",
+        overview: "Category: Installation / Photography<br>Client: /<br>Year: 2026",
+        process: "Through long-exposure photography, time is spread out and flattened. Light begins to appear, and color emerges from within white, gradually separating, shifting, and falling. In this way, thirty sunsets are generated.",
+        outcome: "The work reawakens a perception close to that of a natural sunset: changes in light, the passage of time, and an immediate sense of beauty. This work cannot be seen without being recorded.",
+        art: {
+          bg: "#f8d27a",
+          a: "#3b2615",
+          b: "#fff4d8",
+          c: "#f05a28",
+          label: "SUNSET / WALL"
+        }
+      },
+      {
+        year: "2026",
+        title: "Shelf-Life Calendar",
+        type: "Book Design",
+        ref: "Book Design",
+        client: "/",
+        slug: "expiry-date-calendar-book",
+        bg: "#f6f0d8",
+        fg: "#222222",
+        active: "#000000",
+        concept: "A calendar book that uses expiration dates as its temporal material, reorganizing dates found on everyday consumer goods into a system about preservation, failure, and waiting.",
+        overview: "Category: Book Design<br>Client: /<br>Year: 2026",
+        process: "The project collects dates from packaging, labels, and shelf-life information, transforming numbers originally used for consumption decisions into a structure for reading time.",
+        outcome: "The final work is a calendar book composed of expiration dates, creating a new way to look at everyday objects and temporal order.",
+        art: {
+          bg: "#f6f0d8",
+          a: "#222222",
+          b: "#ffffff",
+          c: "#d9482b",
+          label: "EXPIRY / CAL"
+        }
+      },
+      {
+        year: "2026",
+        title: "Maze Typeface",
+        type: "Type Design",
+        ref: "Type Design",
+        client: "/",
+        slug: "maze-typeface",
+        bg: "#e8e8e8",
+        fg: "#111111",
+        active: "#000000",
+        concept: "A placeholder for a planned 2026 type design project that explores letterforms as maze-like structures. The project will investigate how reading, navigation, and visual obstruction can coexist within a type system.",
+        overview: "Category: Type Design<br>Client: /<br>Year: 2026",
+        process: "Placeholder process: developing modular letter structures, path-like strokes, and rules that make each glyph operate both as a readable character and as a small navigational space.",
+        outcome: "Placeholder outcome: an experimental typeface and visual specimen built around the logic of mazes.",
+        art: {
+          bg: "#e8e8e8",
+          a: "#111111",
+          b: "#ffffff",
+          c: "#7f7f7f",
+          label: "MAZE / TYPE"
+        }
+      },
+      {
+        year: "2026",
+        title: "Birdwatching at Supermarket",
+        type: "Digital Design",
+        ref: "Digital Design",
+        client: "/",
+        slug: "birdwatching-at-supermarket",
+        bg: "#d7ff73",
+        fg: "#18358f",
+        active: "#000000",
+        concept: "An interactive project that turns supermarket packaging into a birdwatching site. Users search for hidden bird images, marks, and misread forms within consumer space.",
+        overview: "Category: Digital Design<br>Client: /<br>Year: 2026",
+        process: "The project uses a mobile interface as an observation tool, reorganizing image fragments, package illustrations, and logo systems into an urban birdwatching method.",
+        outcome: "The work becomes an interactive archive about looking, consumer space, and image recognition.",
+        art: {
+          bg: "#d7ff73",
+          a: "#18358f",
+          b: "#ffffff",
+          c: "#ff7a2f",
+          label: "BIRD / WATCH"
+        }
+      },
+      {
+        year: "2025",
+        title: "Ghost Work: View Every Click",
+        type: "Digital Design",
+        ref: "Digital Design",
+        client: "/",
+        link: "https://qiuwanqing.github.io/GhostWork-test/",
+        slug: "ghost-work-view-every-click",
+        bg: "#111111",
+        fg: "#f2f2f2",
+        active: "#ffffff",
+        concept: "This interactive website translates the invisible human labor behind artificial intelligence systems into a perceptible scale. Every click made by the user is recorded and quantified, revealing hidden micro-labor and mechanisms of responsibility transfer within digital systems.",
+        overview: "Category: Digital Design<br>Client: /<br>Year: 2025",
+        process: "The website uses clicking as a unit of measurement, connecting user actions with the scale of hidden labor behind digital infrastructures.",
+        outcome: "The project presents labor distribution, responsibility transfer, and invisible work through an interactive interface.",
+        art: {
+          bg: "#111111",
+          a: "#f2f2f2",
+          b: "#222222",
+          c: "#72ff9f",
+          label: "GHOST / WORK"
+        }
+      },
+      {
+        year: "2025",
+        title: "Guangzhou Subtropical Film Festival",
+        type: "Visual Identity",
+        ref: "Visual Identity",
+        client: "/",
+        slug: "guangzhou-subtropical-film-festival",
+        bg: "#ff6f3c",
+        fg: "#13351f",
+        active: "#000000",
+        concept: "A complete event visual system for the Guangzhou Subtropical Film Festival. The visual concept draws from tropical plant forms and traditional paper-cut language, using layering, cutouts, and silhouettes to create a humid, heat-filled festival atmosphere with a sense of flowing memory.",
+        overview: "Category: Visual Identity<br>Client: /<br>Year: 2025",
+        process: "The project extracts tropical plant forms, paper-cut silhouettes, and the spatial feeling of a film festival, developing a system of layered forms, cutouts, and color blocks.",
+        outcome: "The visual system is applied across the main visual, promotional materials, and related merchandise.",
+        art: {
+          bg: "#ff6f3c",
+          a: "#13351f",
+          b: "#ffe7d6",
+          c: "#1bb35e",
+          label: "SUBTROPICAL"
+        }
+      },
+      {
+        year: "2025",
+        title: "Repeat and Repeat Again",
+        type: "Type Design / Book Design",
+        ref: "Type Design / Book Design",
+        client: "/",
+        slug: "repeat-and-repeat-again",
+        bg: "#e7e1d8",
+        fg: "#2d2118",
+        active: "#000000",
+        concept: "This project studies ledger printing systems and develops an experimental typeface through observations of stamp handles, ink bleeding, and repeated stamping traces. Through continuous print experiments, it explores how repetition can generate order while introducing deviation, texture, and unpredictable change.",
+        overview: "Category: Type Design / Book Design<br>Client: /<br>Year: 2025",
+        process: "The project observes stamp structures, ink diffusion, and repeated print deviations, translating these details into letterform construction.",
+        outcome: "The final work is an experimental typeface and book system that responds to ledger formats and logics of recording.",
+        art: {
+          bg: "#e7e1d8",
+          a: "#2d2118",
+          b: "#ffffff",
+          c: "#6f3b1f",
+          label: "REPEAT"
+        }
+      },
+      {
+        year: "2025",
+        title: "Box Notes",
+        type: "Packaging Design / Book Design",
+        ref: "Packaging Design / Book Design",
+        client: "/",
+        slug: "box-notes",
+        bg: "#d9e8ff",
+        fg: "#1b2a41",
+        active: "#000000",
+        concept: "An experimental project about migration, placement, and preservation. Through the metaphor of the box, it records small objects carried during moving. The work contains four parts and explores how symbolic meanings of objects can rebuild a sense of belonging between drifting and settling.",
+        overview: "Category: Packaging Design / Book Design<br>Client: /<br>Year: 2025",
+        process: "The project centers on the box as a device for containment, protection, and classification, using small objects from moving as narrative clues.",
+        outcome: "The work consists of four parts that present relationships between migration, placement, preservation, and belonging.",
+        art: {
+          bg: "#d9e8ff",
+          a: "#1b2a41",
+          b: "#ffffff",
+          c: "#ffb100",
+          label: "BOX / NOTES"
+        }
+      },
+      {
+        year: "2025",
+        title: "Etching Log",
+        type: "Illustration / Book Design",
+        ref: "Illustration / Book Design",
+        client: "/",
+        slug: "etching-log",
+        bg: "#f0f0f0",
+        fg: "#252525",
+        active: "#000000",
+        concept: "Etching Log records copperplate etching techniques through detailed technical notes, sources of inspiration, and a series of etchings titled Waxing and Waning, presenting the application and exploration of the process.",
+        overview: "Category: Illustration / Book Design<br>Client: /<br>Year: 2025",
+        process: "The project organizes copperplate etching processes, technical notes, visual references, and print experiments in the form of a log.",
+        outcome: "The book combines process documentation with the Waxing and Waning etching series, presenting both technical learning and image exploration.",
+        art: {
+          bg: "#f0f0f0",
+          a: "#252525",
+          b: "#ffffff",
+          c: "#8b8b8b",
+          label: "ETCHING / LOG"
+        }
+      },
+      {
+        year: "2025",
+        title: "ENDGAME_ERA_2149-X.MEM.EXE",
+        type: "Digital Design / Video and Motion",
+        ref: "Digital Design / Video and Motion",
+        client: "/",
+        slug: "endgame-era-2149",
+        bg: "#0b1020",
+        fg: "#9cffd9",
+        active: "#ffffff",
+        concept: "A pseudo-archive from the future. The project imagines how the relationship between humans and AI might evolve after artificial intelligence continues to develop and separates from human society. Through video, surveillance, and book design, it constructs a cycle of encryption and decryption.",
+        overview: "Category: Digital Design / Video and Motion<br>Client: /<br>Year: 2025",
+        process: "The project organizes video, surveillance models, and printed records through the format of a future archive, building a cyclical narrative of encryption and decoding.",
+        outcome: "The installation includes a decryption-process video, a real-time YOLO surveillance model, and a printed book documenting the encryption and decoding process.",
+        art: {
+          bg: "#0b1020",
+          a: "#9cffd9",
+          b: "#ffffff",
+          c: "#5d5dff",
+          label: "2149 / MEM"
+        }
+      },
+      {
+        year: "2025",
+        title: "DADA POEM",
+        type: "Digital Design",
+        ref: "Digital Design",
+        client: "/",
+        slug: "dada-poem",
+        bg: "#ff7a2f",
+        fg: "#18358f",
+        active: "#000000",
+        concept: "A web tool that transforms accidental text from the environment into poetry. Users collect, select, and recombine words to generate a DADA poem from the immediate surroundings.",
+        overview: "Category: Digital Design<br>Client: /<br>Year: 2025",
+        process: "The project uses the phone and web interface as tools for collecting language, allowing everyday environmental text to become poetic material.",
+        outcome: "The work becomes both a usable poetry-generation interface and a method for looking again at the text around us.",
+        art: {
+          bg: "#ff7a2f",
+          a: "#18358f",
+          b: "#ffe1c2",
+          c: "#f73263",
+          label: "DADA / POEM"
+        }
+      },
+      {
+        year: "2024",
+        title: "Non-Art Art Books",
+        type: "Book Design / Artist's Book",
+        ref: "Book Design / Artist's Book",
+        client: "/",
+        slug: "non-art-art-books",
+        bg: "#ffffff",
+        fg: "#333333",
+        active: "#000000",
+        concept: "Also titled New Edition of Total Art, this is a collection of ideas around non-art art books, using books as containers for collecting, misreading, and reclassifying everyday material.",
+        overview: "Category: Book Design / Artist's Book<br>Client: /<br>Year: 2024",
+        process: "The project extracts structures from everyday materials and non-art objects, reorganizing them through the reading logic of artist's books.",
+        outcome: "The result is a set of experimental publications between archive, book, and conceptual sketch.",
+        art: {
+          bg: "#ffffff",
+          a: "#333333",
+          b: "#eeeeee",
+          c: "#777777",
+          label: "TOTAL / ART"
+        }
+      }
+    ]);
+
+    const root = document.documentElement;
+    const indexView = document.getElementById("indexView");
+    const gridView = document.getElementById("gridView");
+    const previewCard = document.getElementById("previewCard");
+    const archivePage = document.getElementById("archivePage");
+    const detailPage = document.getElementById("detailPage");
+
+    const indexButton = document.getElementById("indexButton");
+    const gridButton = document.getElementById("gridButton");
+    const homeButton = document.getElementById("homeButton");
+
+    const aboutButton = document.getElementById("aboutButton");
+    const aboutPanel = document.getElementById("aboutPanel");
+    const closeAbout = document.getElementById("closeAbout");
+    const pageFooter = document.getElementById("pageFooter");
+    const footerDate = document.getElementById("footerDate");
+    const footerYear = document.getElementById("footerYear");
+    const scrollTopButton = document.getElementById("scrollTopButton");
+    const scrollTrack = document.getElementById("scrollTrack");
+    const scrollThumb = document.getElementById("scrollThumb");
+
+    let activeProject = null;
+    let currentView = "index";
+    let lastTappedSlug = null;
+    let scrollDragging = false;
+    let dragStartY = 0;
+    let startScrollTop = 0;
+
+    function formatFooterDate(date) {
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
+    function updateFooter() {
+      const now = new Date();
+      footerDate.textContent = formatFooterDate(now);
+      footerYear.textContent = now.getFullYear();
+    }
+
+    function updateScrollThumb() {
+      if (scrollTrack.offsetParent === null) return;
+
+      const doc = document.documentElement;
+      const scrollHeight = doc.scrollHeight;
+      const clientHeight = window.innerHeight;
+      const trackHeight = scrollTrack.clientHeight;
+      const thumbHeight = Math.max((clientHeight / scrollHeight) * trackHeight, 48);
+      const maxTop = trackHeight - thumbHeight;
+      const scrollRatio = doc.scrollTop / (scrollHeight - clientHeight);
+      scrollThumb.style.height = thumbHeight + 'px';
+      scrollThumb.style.top = Math.min(Math.max(scrollRatio * maxTop, 0), maxTop) + 'px';
+    }
+
+    function setArchiveVisibility(visible) {
+      pageFooter.classList.toggle('is-hidden', !visible);
+      scrollTrack.classList.toggle('is-hidden', !visible);
+    }
+
+    function attachScrollEvents() {
+      scrollTopButton.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      window.addEventListener('scroll', updateScrollThumb);
+      window.addEventListener('resize', updateScrollThumb);
+
+      scrollThumb.addEventListener('pointerdown', (event) => {
+        scrollDragging = true;
+        dragStartY = event.clientY;
+        startScrollTop = document.documentElement.scrollTop;
+        scrollThumb.classList.add('dragging');
+        event.preventDefault();
+      });
+
+      window.addEventListener('pointermove', (event) => {
+        if (!scrollDragging) return;
+        const trackHeight = scrollTrack.clientHeight;
+        const thumbHeight = scrollThumb.clientHeight;
+        const delta = event.clientY - dragStartY;
+        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+        const ratio = delta / (trackHeight - thumbHeight);
+        window.scrollTo({ top: Math.min(Math.max(startScrollTop + ratio * scrollable, 0), scrollable) });
+      });
+
+      window.addEventListener('pointerup', () => {
+        if (!scrollDragging) return;
+        scrollDragging = false;
+        scrollThumb.classList.remove('dragging');
+      });
+
+      scrollTrack.addEventListener('click', (event) => {
+        if (event.target !== scrollTrack) return;
+        const trackRect = scrollTrack.getBoundingClientRect();
+        const clickY = event.clientY - trackRect.top;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const thumbHeight = scrollThumb.clientHeight;
+        const trackHeight = scrollTrack.clientHeight;
+        const scrollable = scrollHeight - window.innerHeight;
+        const targetRatio = Math.min(Math.max((clickY - thumbHeight / 2) / (trackHeight - thumbHeight), 0), 1);
+        window.scrollTo({ top: targetRatio * scrollable, behavior: 'smooth' });
+      });
+    }
+
+    function initFooter() {
+      updateFooter();
+      attachScrollEvents();
+      updateScrollThumb();
+    }
+
+    function groupedProjects() {
+      return projects.reduce((groups, project) => {
+        if (!groups[project.year]) groups[project.year] = [];
+        groups[project.year].push(project);
+        return groups;
+      }, {});
+    }
+
+    function createArtwork(project) {
+      const { bg, a, b, c, label } = project.art;
+
+      return `
+        <svg viewBox="0 0 900 650" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${project.title}">
+          <rect width="900" height="650" fill="${b}" />
+          <rect x="60" y="70" width="520" height="410" fill="${bg}" opacity="0.95" />
+          <rect x="250" y="130" width="480" height="360" fill="${c}" opacity="0.92" transform="rotate(-7 490 310)" />
+          <rect x="120" y="230" width="390" height="300" fill="${a}" opacity="0.9" transform="rotate(11 320 380)" />
+          <rect x="380" y="90" width="330" height="440" fill="${b}" opacity="0.82" />
+          <line x1="0" y1="110" x2="900" y2="600" stroke="${a}" stroke-width="12" opacity="0.8" />
+          <line x1="120" y1="0" x2="760" y2="650" stroke="${c}" stroke-width="8" opacity="0.8" />
+          <circle cx="700" cy="145" r="48" fill="${a}" />
+          <circle cx="748" cy="195" r="26" fill="${c}" />
+          <text x="55" y="600" fill="${a}" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="900" letter-spacing="-5">
+            ${label}
+          </text>
+        </svg>
+      `;
+    }
+
+    function setTheme(project) {
+      activeProject = project;
+
+      root.style.setProperty("--bg", project.bg);
+      root.style.setProperty("--fg", project.fg);
+      root.style.setProperty("--active", project.active);
+      root.style.setProperty("--line", project.fg);
+
+      previewCard.innerHTML = createArtwork(project);
+      previewCard.classList.add("is-visible");
+
+      document.querySelectorAll(".project-row").forEach(row => {
+        row.classList.toggle("is-active", row.dataset.slug === project.slug);
+      });
+    }
+
+    function resetTheme() {
+      if (detailPage.classList.contains("is-visible")) return;
+
+      root.style.setProperty("--bg", "#f7f7f7");
+      root.style.setProperty("--fg", "#333333");
+      root.style.setProperty("--active", "#000000");
+      root.style.setProperty("--line", "rgba(0, 0, 0, 0.58)");
+
+      previewCard.classList.remove("is-visible");
+      document.querySelectorAll(".project-row").forEach(row => row.classList.remove("is-active"));
+      activeProject = null;
+    }
+
+    function renderIndex() {
+      const groups = groupedProjects();
+      const years = Object.keys(groups).sort((a, b) => Number(b) - Number(a));
+      const profileIntro = `
+        <section class="profile-strip" aria-label="Profile">
+          <div class="profile-copy">
+Qiu Wanqing is a designer and artist living and working in Beijing. Through experimental publishing, interaction, image systems, and installations, her work investigates how fragments of daily life can be collected, translated, and reorganized into new visual and poetic systems.
+
+          </div>
+          <div class="profile-label"></div>
+        </section>
+      `;
+
+      indexView.innerHTML = profileIntro + years.map(year => {
+        const rows = groups[year].map(project => `
+          <div class="project-row" data-slug="${project.slug}">
+            <div class="project-title">${project.title}</div>
+            <div class="project-ref">${project.ref}</div>
+          </div>
+        `).join("");
+
+        return `
+          <section class="year-block">
+            <div class="year-label">
+              <div>${year}</div>
+              <div></div>
+            </div>
+            ${rows}
+          </section>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".project-row").forEach(row => {
+        const project = projects.find(item => item.slug === row.dataset.slug);
+        const title = row.querySelector(".project-title");
+
+        title.addEventListener("mouseenter", () => {
+          setTheme(project);
+        });
+
+        title.addEventListener("mouseleave", resetTheme);
+
+        title.addEventListener("click", () => {
+          const isMobile = window.matchMedia("(max-width: 900px)").matches;
+
+          if (isMobile && lastTappedSlug !== project.slug) {
+            lastTappedSlug = project.slug;
+            setTheme(project);
+            setTimeout(() => {
+              lastTappedSlug = null;
+            }, 1600);
+            return;
+          }
+
+          openProject(project);
+        });
+      });
+
+      indexView.addEventListener("mouseleave", resetTheme);
+    }
+
+    function renderGrid() {
+      gridView.innerHTML = projects.map(project => `
+        <article class="grid-card" data-slug="${project.slug}">
+          <div class="grid-image">
+            ${createArtwork(project)}
+          </div>
+          <div class="grid-info">
+            <div class="grid-title">${project.title}</div>
+            <div class="grid-meta">
+              <span>${project.year}</span>
+              <span>${project.type}</span>
+              <span>${project.ref}</span>
+            </div>
+          </div>
+        </article>
+      `).join("");
+
+      document.querySelectorAll(".grid-card").forEach(card => {
+        const project = projects.find(item => item.slug === card.dataset.slug);
+
+        card.addEventListener("mouseenter", () => {
+          root.style.setProperty("--bg", project.bg);
+          root.style.setProperty("--fg", project.fg);
+          root.style.setProperty("--active", project.active);
+        });
+
+        card.addEventListener("click", () => {
+          openProject(project);
+        });
+      });
+
+      gridView.addEventListener("mouseleave", resetTheme);
+    }
+
+    function switchView(view) {
+      currentView = view;
+
+      if (view === "index") {
+        indexView.classList.remove("is-hidden");
+        gridView.classList.remove("is-visible");
+        indexButton.classList.add("is-active");
+        gridButton.classList.remove("is-active");
+      } else {
+        indexView.classList.add("is-hidden");
+        gridView.classList.add("is-visible");
+        gridButton.classList.add("is-active");
+        indexButton.classList.remove("is-active");
+      }
+
+      resetTheme();
+    }
+
+    function openProject(project) {
+      setTheme(project);
+
+      archivePage.classList.add("is-hidden");
+      detailPage.classList.add("is-visible");
+      previewCard.classList.remove("is-visible");
+
+      const projectLink = project.link
+        ? `<a href="${project.link}" target="_blank" rel="noreferrer">${project.link}</a>`
+        : "";
+
+      detailPage.innerHTML = `
+        <div class="detail-header">
+          <h1 class="detail-title">${project.title}</h1>
+          <div class="detail-meta">
+            <div>Category<br>${project.type}</div>
+            <div>Client<br>${project.client || "/"}</div>
+            <div>Year<br>${project.year}</div>
           </div>
         </div>
-        <div class="placeholder" id="placeholder">
-          <h2>打开图片开始标注</h2>
-          <p>label myself</p>
-          <p>单击创建点；多边形点回起点、双击或按 Enter 完成；选中后可拖拽顶点。</p>
-          <button id="openFromPlaceholder">打开图片</button>
-        </div>
-      </div>
-      <div class="statusbar"><span id="statusMode">模式：创建多边形</span><span id="xy">x = --, y = --</span></div>
-    </div>
-    <div class="right-resizer" id="rightResizer" title="拖动调整右侧面板宽度"></div>
-    <div class="rightbar">
-      <div class="panel">
-        <div class="panelhead"><span>标签列表</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
-        <div class="panelbody"><ul class="labellist" id="labelList"></ul></div>
-      </div>
-      <div class="panel">
-        <div class="panelhead"><span>标注对象</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
-        <div class="panelbody"><ul class="shapelist" id="shapeList"></ul></div>
-        <div class="hint">导出 JSON = 类 LabelMe 格式。导出 PNG = 当前标注截图。</div>
-      </div>
-      <div class="panel">
-        <div class="panelhead"><span>图片列表</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
-        <div class="search"><input id="fileSearch" placeholder="搜索文件名"></div>
-        <div class="panelbody"><ul class="filelist" id="fileList"></ul></div>
-        <div class="toolgroup" style="border-right:0;border-top:1px solid #ddd;justify-content:space-between;background:#eee">
-          <button class="runbtn" id="importBtn">导入 JSON</button>
-          <button class="runbtn" id="exportJsonBtn">导出 JSON</button>
-          <button class="runbtn" id="exportPngBtn">导出 PNG</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<input id="fileInput" class="hidden" type="file" accept="image/*" multiple />
-<input id="jsonInput" class="hidden" type="file" accept="application/json,.json" />
-<div class="modalshade" id="labelModal">
-  <div class="modal">
-    <div class="modalbar"><span class="close"></span><span class="min"></span><span class="max"></span></div>
-    <div class="modalbody">
-      <div class="modalrow"><input id="modalLabel" autocomplete="off" placeholder="标签名"><input id="modalColor" class="colorpick" type="color" title="标注颜色"><input id="modalGroup" class="group" placeholder="组 ID"></div>
-      <div class="modalactions"><button id="modalCancel">取消</button><button class="primary" id="modalOk">确定</button></div>
-      <div class="suggestions" id="suggestions"></div>
-      <textarea class="descbox" id="modalDesc" placeholder="标注描述 / 你的理解、情绪或联想"></textarea>
-    </div>
-  </div>
-</div>
-<script>
-(function(){
-  const $ = s => document.querySelector(s);
-  const $$ = s => [...document.querySelectorAll(s)];
-  const image = $('#image'), overlay = $('#overlay'), imageArea = $('#imageArea'), canvaswrap = $('#canvaswrap');
-  const main = $('.main'), rightResizer = $('#rightResizer');
-  const fileInput = $('#fileInput'), jsonInput = $('#jsonInput');
-  const labelModal = $('#labelModal'), modalLabel = $('#modalLabel'), modalGroup = $('#modalGroup'), modalColor = $('#modalColor'), modalDesc = $('#modalDesc');
-  const baseLabels = [];
-  const toolNames = {polygon:'多边形', freehand:'自由绘制', rectangle:'矩形', circle:'圆形', point:'点', line:'线段', linestrip:'折线'};
-  const colors = ['#ff00ff','#00ff00','#ffff00','#00e5ff','#ff003c','#9d00ff','#ff7a00','#00ff9d','#0066ff','#ff1493','#b6ff00','#00fff0','#ffea00','#ff005d','#7cfc00','#22ff00','#ff3300','#00b3ff','#ff00aa','#ccff00'];
-  let files=[], currentFileIndex=-1, imageName='', imageLoaded=false;
-  let shapes=[], selectedId=null, idSeq=1;
-  let tool='polygon', zoom=1, drawing=false, start=null, preview=null, tempPoints=[];
-  let pendingShape=null;
-  let mousePos={x:0,y:0};
-  let resizingRight=false;
-  let modalColorTouched=false;
-  let undoStack=[], redoStack=[], activeStorageKey='';
 
-  function labelColor(label){
-    let idx = baseLabels.indexOf(label);
-    if(idx >= 0) return colors[idx % colors.length];
-    let h=0; for(let i=0;i<label.length;i++) h=(h*31+label.charCodeAt(i))%colors.length;
-    return colors[h];
-  }
-  function shapeColor(s){ return s.color || labelColor(s.label||'未命名'); }
-  function initLabels(){
-    renderLabelList();
-    $('#labelList').addEventListener('click', e=>{
-      const li=e.target.closest('li'); if(!li) return;
-      if(selectedId){ const s=shapes.find(x=>x.id===selectedId); if(s){s.label=li.dataset.label; render(); renderShapeList(); commitHistory();}}
+        <div class="detail-concept">
+          ${project.concept}
+          ${projectLink ? `<br><br>${projectLink}` : ""}
+        </div>
+
+        <div class="media-placeholder">
+          ${createArtwork(project)}
+        </div>
+
+        <section class="detail-layout">
+          <div class="section-title">Overview</div>
+          <div class="section-body">${project.overview}</div>
+        </section>
+
+        <section class="detail-layout">
+          <div class="section-title">Process</div>
+          <div class="section-body">${project.process}</div>
+        </section>
+
+        <section class="detail-layout">
+          <div class="section-title">Outcome</div>
+          <div class="section-body">${project.outcome}</div>
+        </section>
+
+        <button class="back-link" id="backToArchive">← Back to Archive</button>
+      `;
+
+      document.getElementById("backToArchive").addEventListener("click", backToArchive);
+
+      setArchiveVisibility(false);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+
+    function backToArchive() {
+      detailPage.classList.remove("is-visible");
+      detailPage.innerHTML = "";
+      archivePage.classList.remove("is-hidden");
+      resetTheme();
+      setArchiveVisibility(true);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+
+    function goHome() {
+      aboutPanel.classList.remove("is-visible");
+      backToArchive();
+      switchView("index");
+    }
+
+    indexButton.addEventListener("click", () => {
+      if (detailPage.classList.contains("is-visible")) backToArchive();
+      switchView("index");
     });
-    renderSuggestions('');
-  }
-  function renderLabelList(){
-    $('#labelList').innerHTML = baseLabels.map(l=>`<li data-label="${escapeAttr(l)}"><span class="labeltext">${escapeHtml(l)}</span><span class="dot" style="background:${labelColor(l)}"></span></li>`).join('');
-  }
-  function cloneShapes(){ return JSON.parse(JSON.stringify(shapes)); }
-  function labelsFromShapes(list){ return [...new Set(list.map(s=>(s.label||'').trim()).filter(Boolean))]; }
-  function syncLabels(list){
-    const labels=labelsFromShapes(list);
-    baseLabels.splice(0,baseLabels.length,...labels);
-    renderLabelList();
-  }
-  function snapshotState(){
-    return {shapes:cloneShapes(), selectedId, idSeq, labels:baseLabels.slice()};
-  }
-  function restoreState(state,save=true){
-    shapes=JSON.parse(JSON.stringify(state.shapes||[]));
-    selectedId=state.selectedId||null;
-    idSeq=state.idSeq || (shapes.reduce((m,s)=>Math.max(m,s.id||0),0)+1);
-    baseLabels.splice(0,baseLabels.length,...(state.labels||labelsFromShapes(shapes)));
-    renderLabelList(); render(); renderShapeList();
-    if(save) saveStoredAnnotations();
-  }
-  function storageKeyForFile(file){
-    return file ? `label-myself:${file.name}:${file.size}:${file.lastModified}` : '';
-  }
-  function loadStoredAnnotations(){
-    if(!activeStorageKey) return false;
-    try{
-      const raw=localStorage.getItem(activeStorageKey);
-      if(!raw) return false;
-      const saved=JSON.parse(raw);
-      const state=saved.current || saved;
-      restoreState(state,false);
-      undoStack=saved.undoStack || [snapshotState()];
-      redoStack=saved.redoStack || [];
-      return true;
-    }catch(err){ return false; }
-  }
-  function saveStoredAnnotations(){
-    if(!activeStorageKey) return;
-    try{ localStorage.setItem(activeStorageKey,JSON.stringify({current:snapshotState(),undoStack,redoStack})); }catch(err){}
-  }
-  function resetHistory(){
-    undoStack=[snapshotState()];
-    redoStack=[];
-    saveStoredAnnotations();
-  }
-  function commitHistory(){
-    undoStack.push(snapshotState());
-    if(undoStack.length>100) undoStack.shift();
-    redoStack=[];
-    saveStoredAnnotations();
-  }
-  function undoHistory(){
-    if(undoStack.length<=1) return;
-    redoStack.push(undoStack.pop());
-    restoreState(undoStack[undoStack.length-1]);
-  }
-  function redoHistory(){
-    if(!redoStack.length) return;
-    const state=redoStack.pop();
-    undoStack.push(state);
-    restoreState(state);
-  }
-  function escapeHtml(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
-  function escapeAttr(s){return escapeHtml(s).replace(/'/g,'&#39;')}
-  function setTool(t){ tool=t; cancelTemp(); $$('#leftTools .sidebtn').forEach(b=>b.classList.toggle('active',b.dataset.tool===t)); $('#statusMode').textContent='模式：创建'+(toolNames[t]||t);}
-  $('#leftTools').addEventListener('click', e=>{ const b=e.target.closest('.sidebtn[data-tool]'); if(b&&!b.classList.contains('disabled')) setTool(b.dataset.tool); });
-  rightResizer.addEventListener('mousedown', e=>{
-    resizingRight=true;
-    rightResizer.classList.add('dragging');
-    document.body.style.cursor='col-resize';
-    document.body.style.userSelect='none';
-    e.preventDefault();
-  });
-  window.addEventListener('mousemove', e=>{
-    if(!resizingRight) return;
-    const rect=main.getBoundingClientRect();
-    const width=Math.max(220,Math.min(460,rect.right-e.clientX));
-    main.style.setProperty('--rightbar-width',width+'px');
-    if(imageLoaded) applyZoom();
-  });
-  window.addEventListener('mouseup', ()=>{
-    if(!resizingRight) return;
-    resizingRight=false;
-    rightResizer.classList.remove('dragging');
-    document.body.style.cursor='';
-    document.body.style.userSelect='';
-  });
 
-  function loadFiles(fileList){ files=[...fileList].filter(f=>f.type.startsWith('image/')); if(files.length){ currentFileIndex=0; openCurrentFile(); renderFileList(); }}
-  function openCurrentFile(){
-    if(currentFileIndex<0 || !files[currentFileIndex]) return;
-    const file=files[currentFileIndex]; imageName=file.name; shapes=[]; selectedId=null; idSeq=1; cancelTemp();
-    activeStorageKey=storageKeyForFile(file);
-    const url=URL.createObjectURL(file);
-    image.onload=()=>{ imageLoaded=true; $('#placeholder').classList.add('hidden'); setupImageSize(); fitWindow(); if(!loadStoredAnnotations()){ syncLabels(shapes); render(); renderShapeList(); resetHistory(); } updateTitle(); };
-    image.src=url;
-  }
-  function setupImageSize(){
-    imageArea.style.width=image.naturalWidth+'px'; imageArea.style.height=image.naturalHeight+'px';
-    overlay.setAttribute('width', image.naturalWidth); overlay.setAttribute('height', image.naturalHeight); overlay.setAttribute('viewBox',`0 0 ${image.naturalWidth} ${image.naturalHeight}`);
-    image.width=image.naturalWidth; image.height=image.naturalHeight;
-  }
-  function updateTitle(){ $('#windowTitle').textContent = `label myself - ${imageName || '未打开图片'} [${currentFileIndex+1>0?currentFileIndex+1:0}/${files.length}]`; }
-  function renderFileList(){
-    const q=$('#fileSearch').value.trim().toLowerCase();
-    $('#fileList').innerHTML = files.map((f,i)=>({f,i})).filter(o=>!q||o.f.name.toLowerCase().includes(q)).map(({f,i})=>`<li class="${i===currentFileIndex?'selected':''}" data-i="${i}"><span class="checkbox">✓</span><span class="labeltext">${escapeHtml(f.name)}</span></li>`).join('');
-  }
-  $('#fileList').addEventListener('click', e=>{const li=e.target.closest('li'); if(li){currentFileIndex=+li.dataset.i; openCurrentFile(); renderFileList();}});
-  $('#fileSearch').addEventListener('input', renderFileList);
-  $('#openImageBtn').onclick=()=>fileInput.click(); $('#openDirBtn').onclick=()=>fileInput.click(); $('#openFromPlaceholder').onclick=()=>fileInput.click();
-  fileInput.onchange=e=>loadFiles(e.target.files);
-  $('#prevBtn').onclick=()=>{ if(files.length){currentFileIndex=(currentFileIndex-1+files.length)%files.length; openCurrentFile(); renderFileList(); }};
-  $('#nextBtn').onclick=()=>{ if(files.length){currentFileIndex=(currentFileIndex+1)%files.length; openCurrentFile(); renderFileList(); }};
-  $('#deleteFileBtn').onclick=()=>{ if(currentFileIndex>=0){ files.splice(currentFileIndex,1); if(currentFileIndex>=files.length) currentFileIndex=files.length-1; if(files.length) openCurrentFile(); else resetAll(); renderFileList(); }};
-  $('#saveBtn').onclick=saveStoredAnnotations;
-  function resetAll(){ image.src=''; imageLoaded=false; imageName=''; activeStorageKey=''; shapes=[]; selectedId=null; undoStack=[]; redoStack=[]; $('#placeholder').classList.remove('hidden'); updateTitle(); render(); renderShapeList();}
+    gridButton.addEventListener("click", () => {
+      if (detailPage.classList.contains("is-visible")) backToArchive();
+      switchView("grid");
+    });
 
-  function imgPoint(evt){
-    const rect = overlay.getBoundingClientRect();
-    let x=(evt.clientX-rect.left)*(image.naturalWidth/rect.width); let y=(evt.clientY-rect.top)*(image.naturalHeight/rect.height);
-    x=Math.max(0,Math.min(image.naturalWidth,x)); y=Math.max(0,Math.min(image.naturalHeight,y));
-    return {x,y};
-  }
-  overlay.addEventListener('mousemove', e=>{ if(!imageLoaded) return; mousePos=imgPoint(e); $('#xy').textContent=`x = ${mousePos.x.toFixed(1)}, y = ${mousePos.y.toFixed(1)}`; if(drawing && tool==='freehand'){ addFreehandPoint(mousePos); return; } if(drawing) updatePreview(mousePos); });
-  window.addEventListener('mouseup', e=>{ if(drawing && tool==='freehand'){ finishFreehand(); } if(drawing && (tool==='rectangle'||tool==='circle')){ finishDragShape(mousePos); }});
-  overlay.addEventListener('mousedown', e=>{
-    if(!imageLoaded) return;
-    const target=e.target;
-    const p=imgPoint(e);
-    if(e.detail > 1 && (tool==='polygon' || tool==='linestrip')) return;
-    if(tool==='polygon') addPolygonPoint(p);
-    else if(tool==='freehand') startFreehand(p);
-    else if(tool==='linestrip') addLineStripPoint(p);
-    else if(tool==='rectangle' || tool==='circle'){ drawing=true; start=p; createPreview(); updatePreview(p); }
-    else if(tool==='point') createShape('point',[ [p.x,p.y] ]);
-    else if(tool==='line'){ if(!drawing){drawing=true;start=p;createPreview();} else {finishLine(p);} }
-  });
-  overlay.addEventListener('dblclick', e=>{ if(tool==='polygon' && tempPoints.length>=3){ finishTemp('polygon'); } if(tool==='linestrip' && tempPoints.length>=2){ finishTemp('linestrip'); } });
-  window.addEventListener('keydown', e=>{
-    if(labelModal.style.display!=='none' && labelModal.style.display!==''){ if(e.key==='Enter'){e.preventDefault(); modalOK();} if(e.key==='Escape') closeModal(); return; }
-    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey ? redoHistory() : undoHistory(); return; }
-    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='y'){ e.preventDefault(); redoHistory(); return; }
-    if(e.key==='Enter'){ if(tool==='polygon'&&tempPoints.length>=3) finishTemp('polygon'); if(tool==='linestrip'&&tempPoints.length>=2) finishTemp('linestrip'); }
-    if(e.key==='Escape') cancelTemp();
-    if(e.key==='Delete' || e.key==='Backspace'){ if(selectedId) deleteSelected(); }
-  });
-  function addPolygonPoint(p){
-    if(drawing && tempPoints.length>=3){
-      const first=tempPoints[0];
-      const closeDistance=10/zoom;
-      if(Math.hypot(p.x-first[0],p.y-first[1])<=closeDistance){ finishTemp('polygon'); return; }
-    }
-    tempPoints.push([p.x,p.y]); drawing=true; createPreview(); updatePreview(p);
-  }
-  function addLineStripPoint(p){ tempPoints.push([p.x,p.y]); drawing=true; createPreview(); updatePreview(p); }
-  function startFreehand(p){ tempPoints=[[p.x,p.y]]; drawing=true; createPreview(); updatePreview(p); }
-  function addFreehandPoint(p){
-    const last=tempPoints[tempPoints.length-1];
-    const minDistance=2/zoom;
-    if(!last || Math.hypot(p.x-last[0],p.y-last[1])>=minDistance){
-      tempPoints.push([p.x,p.y]);
-      updatePreview(p);
-    }
-  }
-  function finishFreehand(){ if(tempPoints.length<2){ cancelTemp(); return; } const pts=tempPoints.slice(); cancelTemp(); createShape('freehand',pts); }
-  function finishLine(p){ drawing=false; removePreview(); createShape('line', [[start.x,start.y],[p.x,p.y]]); start=null; }
-  function finishDragShape(p){ if(!start) return; const pts = rectPoints(start,p); drawing=false; removePreview(); if(tool==='rectangle'){ if(Math.abs(p.x-start.x)>2 && Math.abs(p.y-start.y)>2) createShape('rectangle', pts); } else if(tool==='circle'){ const r=Math.hypot(p.x-start.x,p.y-start.y); if(r>2) createShape('circle', [[start.x,start.y],[p.x,p.y]]); } start=null; }
-  function rectPoints(a,b){ return [[a.x,a.y],[b.x,a.y],[b.x,b.y],[a.x,b.y]]; }
-  function finishTemp(type){ if((type==='polygon'&&tempPoints.length<3)||(type==='linestrip'&&tempPoints.length<2)) return; const pts=tempPoints.slice(); cancelTemp(); createShape(type,pts); }
-  function createShape(type,points){ pendingShape={id:idSeq++, type, points, label:'', group_id:null, description:'', color:'', flags:{}}; openLabelDialog(pendingShape); }
-  function savePendingShape(){ if(!pendingShape) return; const label=(modalLabel.value||'未命名').trim(); pendingShape.label=label; pendingShape.group_id=modalGroup.value.trim() || null; pendingShape.description=modalDesc.value.trim(); pendingShape.color=modalColor.value || labelColor(label); if(!baseLabels.includes(label)){baseLabels.push(label); renderLabelList();} shapes.push(pendingShape); selectedId=pendingShape.id; pendingShape=null; render(); renderShapeList(); commitHistory(); }
-  function cancelPendingShape(){ pendingShape=null; }
-  function cancelTemp(){ drawing=false; tempPoints=[]; start=null; removePreview(); }
-  function createPreview(){ if(!preview){preview=document.createElementNS('http://www.w3.org/2000/svg','path'); preview.setAttribute('class','preview'); overlay.appendChild(preview);} }
-  function removePreview(){ if(preview){preview.remove(); preview=null;} }
-  function updatePreview(p){
-    if(!preview) return;
-    if(tool==='polygon'){ const pts=tempPoints.concat([[p.x,p.y]]); preview.setAttribute('d', polygonD(pts,false)); }
-    if(tool==='freehand'){ preview.setAttribute('d', lineD(tempPoints)); }
-    if(tool==='linestrip'){ const pts=tempPoints.concat([[p.x,p.y]]); preview.setAttribute('d', lineD(pts)); }
-    if(tool==='line'){ preview.setAttribute('d', lineD([[start.x,start.y],[p.x,p.y]])); }
-    if(tool==='rectangle'){ preview.setAttribute('d', polygonD(rectPoints(start,p),true)); }
-    if(tool==='circle'){ const r=Math.hypot(p.x-start.x,p.y-start.y); preview.setAttribute('d', circleD(start.x,start.y,r)); }
-  }
-  function polygonD(points,close=true){ if(!points.length) return ''; return 'M '+points.map(p=>p.join(' ')).join(' L ')+(close?' Z':''); }
-  function lineD(points){ if(!points.length) return ''; return 'M '+points.map(p=>p.join(' ')).join(' L '); }
-  function circleD(cx,cy,r){ return `M ${cx-r} ${cy} A ${r} ${r} 0 1 0 ${cx+r} ${cy} A ${r} ${r} 0 1 0 ${cx-r} ${cy}`; }
-  function render(){
-    [...overlay.querySelectorAll('.drawn')].forEach(n=>n.remove());
-    for(const s of shapes){ drawShape(s); }
-  }
-  function drawShape(s){
-    const color=shapeColor(s);
-    let el;
-    if(s.type==='point'){
-      el=document.createElementNS('http://www.w3.org/2000/svg','circle'); el.setAttribute('cx',s.points[0][0]); el.setAttribute('cy',s.points[0][1]); el.setAttribute('r',5); el.setAttribute('class','drawn shape-point '+(s.id===selectedId?'selected':''));
-      el.style.fill=color;
-    }else{
-      el=document.createElementNS('http://www.w3.org/2000/svg','path'); el.setAttribute('class','drawn '+shapeClass(s)+' '+(s.id===selectedId?'selected':''));
-      let d='';
-      if(s.type==='polygon'||s.type==='rectangle') d=polygonD(s.points,true);
-      if(s.type==='linestrip'||s.type==='line'||s.type==='freehand') d=lineD(s.points);
-      if(s.type==='circle'){ const cx=s.points[0][0], cy=s.points[0][1], r=Math.hypot(s.points[1][0]-cx,s.points[1][1]-cy); d=circleD(cx,cy,r); }
-      el.setAttribute('d',d); el.style.stroke=color; if(s.type==='polygon'||s.type==='rectangle'||s.type==='circle') el.style.fill=hexToRgba(color,.18);
-    }
-    el.dataset.shape=s.id; overlay.appendChild(el);
-    drawShapeLabel(s);
-  }
-  function labelAnchor(s){
-    if(!s.points.length) return [8,20];
-    if(s.type==='circle'){
-      const cx=s.points[0][0], cy=s.points[0][1];
-      return [cx, cy];
-    }
-    if(s.type==='point') return [s.points[0][0], s.points[0][1]];
-    const xs=s.points.map(p=>p[0]), ys=s.points.map(p=>p[1]);
-    return [(Math.min(...xs)+Math.max(...xs))/2, (Math.min(...ys)+Math.max(...ys))/2];
-  }
-  function shapeBounds(s){
-    if(!s.points.length) return {minX:0,minY:0,maxX:0,maxY:0};
-    if(s.type==='circle'){
-      const cx=s.points[0][0], cy=s.points[0][1], r=Math.hypot(s.points[1][0]-cx,s.points[1][1]-cy);
-      return {minX:cx-r,minY:cy-r,maxX:cx+r,maxY:cy+r};
-    }
-    const xs=s.points.map(p=>p[0]), ys=s.points.map(p=>p[1]);
-    return {minX:Math.min(...xs),minY:Math.min(...ys),maxX:Math.max(...xs),maxY:Math.max(...ys)};
-  }
-  function drawShapeLabel(s){
-    const label=(s.label||'未命名').trim();
-    if(!label) return;
-    const [rawX,rawY]=labelAnchor(s);
-    const x=Math.max(6,Math.min(image.naturalWidth-6,rawX));
-    const y=Math.max(6,Math.min(image.naturalHeight-6,rawY));
-    const text=document.createElementNS('http://www.w3.org/2000/svg','text');
-    text.setAttribute('class','drawn shape-label');
-    text.setAttribute('x',x);
-    text.setAttribute('y',y);
-    text.setAttribute('text-anchor','middle');
-    text.setAttribute('dominant-baseline','central');
-    text.style.fill=shapeColor(s);
-    text.textContent=label;
-    overlay.appendChild(text);
-  }
-  function shapeClass(s){ if(s.type==='rectangle') return 'shape-rect'; if(s.type==='line'||s.type==='linestrip'||s.type==='freehand') return 'shape-line'; return 'shape-path'; }
-  function hexToRgba(hex,a){ if(hex.startsWith('hsl')) return hex.replace('hsl','hsla').replace(')',`,${a})`); const h=hex.replace('#',''); const n=parseInt(h,16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
-  function renderShapeList(){
-    $('#shapeList').innerHTML = shapes.map(s=>`<li data-id="${s.id}" class="${s.id===selectedId?'selected':''}"><span class="checkbox">✓</span><span class="labeltext">${escapeHtml(s.label||'未命名')}</span><span class="dot" style="background:${shapeColor(s)}"></span></li>`).join('');
-  }
-  $('#shapeList').addEventListener('click', e=>{const li=e.target.closest('li'); if(li){selectedId=+li.dataset.id; render(); renderShapeList();}});
-  function deleteSelected(){ if(!selectedId) return; shapes=shapes.filter(s=>s.id!==selectedId); selectedId=null; render(); renderShapeList(); commitHistory(); }
-  $('#deleteShapeBtn').onclick=deleteSelected;
-  $('#undoBtn').onclick=undoHistory;
-  $('#redoBtn').onclick=redoHistory;
-  $('#duplicateBtn').onclick=()=>{ const s=shapes.find(x=>x.id===selectedId); if(s){ const copy=JSON.parse(JSON.stringify(s)); copy.id=idSeq++; copy.points=copy.points.map(p=>[p[0]+15,p[1]+15]); shapes.push(copy); selectedId=copy.id; render(); renderShapeList(); commitHistory(); }};
+    homeButton.addEventListener("click", goHome);
 
-  function openLabelDialog(shape){
-    modalColorTouched=!!shape.color;
-    modalLabel.value=shape.label||''; modalGroup.value=shape.group_id||''; modalColor.value=shape.color||labelColor(shape.label||'未命名'); modalDesc.value=shape.description||''; renderSuggestions(modalLabel.value); labelModal.style.display='block'; positionLabelDialog(shape); setTimeout(()=>modalLabel.focus(),30);
-  }
-  function positionLabelDialog(shape){
-    const modal=labelModal.querySelector('.modal');
-    const bounds=shapeBounds(shape);
-    const overlayRect=overlay.getBoundingClientRect();
-    const scaleX=overlayRect.width/(image.naturalWidth||1);
-    const scaleY=overlayRect.height/(image.naturalHeight||1);
-    const gap=14;
-    const modalW=modal.offsetWidth||360;
-    const modalH=modal.offsetHeight||330;
-    const shapeRight=overlayRect.left+bounds.maxX*scaleX;
-    const shapeLeft=overlayRect.left+bounds.minX*scaleX;
-    const shapeMidY=overlayRect.top+((bounds.minY+bounds.maxY)/2)*scaleY;
-    let left=shapeRight+gap;
-    if(left+modalW>window.innerWidth-gap) left=shapeLeft-modalW-gap;
-    left=Math.max(gap,Math.min(window.innerWidth-modalW-gap,left));
-    const top=Math.max(gap,Math.min(window.innerHeight-modalH-gap,shapeMidY-modalH/2));
-    modal.style.left=left+'px';
-    modal.style.top=top+'px';
-  }
-  function closeModal(){ labelModal.style.display='none'; cancelPendingShape(); render(); }
-  function modalOK(){ labelModal.style.display='none'; savePendingShape(); }
-  $('#modalOk').onclick=modalOK; $('#modalCancel').onclick=closeModal;
-  modalLabel.addEventListener('input',()=>{ renderSuggestions(modalLabel.value); if(!modalColorTouched) modalColor.value=labelColor(modalLabel.value||'未命名'); });
-  modalColor.addEventListener('input',()=>{ modalColorTouched=true; });
-  function renderSuggestions(q){
-    q=(q||'').toLowerCase(); const arr=baseLabels.filter(l=>!q||l.toLowerCase().includes(q));
-    $('#suggestions').innerHTML=arr.map(l=>`<div data-label="${escapeAttr(l)}" class="${l===modalLabel.value?'active':''}">${escapeHtml(l)}</div>`).join('');
-  }
-  $('#suggestions').addEventListener('click',e=>{const d=e.target.closest('div[data-label]'); if(d){modalLabel.value=d.dataset.label; if(!modalColorTouched) modalColor.value=labelColor(modalLabel.value||'未命名'); renderSuggestions(modalLabel.value);}});
+    aboutButton.addEventListener("click", () => {
+      aboutPanel.classList.toggle("is-visible");
+    });
 
-  function fitWindow(){ if(!imageLoaded)return; const pad=30; const w=canvaswrap.clientWidth-pad, h=canvaswrap.clientHeight-pad; zoom=Math.min(w/image.naturalWidth,h/image.naturalHeight,1.6); if(!isFinite(zoom)||zoom<=0) zoom=1; applyZoom(); }
-  function centerStage(){
-    canvaswrap.scrollLeft=Math.max(0,($('#stage').clientWidth-canvaswrap.clientWidth)/2);
-    canvaswrap.scrollTop=Math.max(0,($('#stage').clientHeight-canvaswrap.clientHeight)/2);
-  }
-  function applyZoom(){
-    const scaledW=(image.naturalWidth||0)*zoom;
-    const scaledH=(image.naturalHeight||0)*zoom;
-    $('#stage').style.width=Math.max(canvaswrap.clientWidth,scaledW)+'px';
-    $('#stage').style.height=Math.max(canvaswrap.clientHeight,scaledH)+'px';
-    imageArea.style.transform=`translate(-50%,-50%) scale(${zoom})`;
-    imageArea.style.transformOrigin='center center';
-    imageArea.style.margin='0';
-    $('#zoomInput').value=Math.round(zoom*100)+' %';
-    centerStage();
-  }
-  $('#fitBtn').onclick=fitWindow;
-  $('#zoomInput').addEventListener('change',e=>{ let v=parseFloat(e.target.value); if(!isNaN(v)){ zoom=Math.max(.1,Math.min(8,v/100)); applyZoom(); }});
-  canvaswrap.addEventListener('wheel',e=>{ if(!e.metaKey&&!e.ctrlKey) return; e.preventDefault(); zoom*= e.deltaY<0?1.08:.92; zoom=Math.max(.1,Math.min(8,zoom)); applyZoom();},{passive:false});
-  $('#brightness').oninput=e=>image.style.setProperty('--bright',e.target.value/100);
-  $('#contrast').oninput=e=>image.style.setProperty('--contrast',e.target.value/100);
+    closeAbout.addEventListener("click", () => {
+      aboutPanel.classList.remove("is-visible");
+    });
 
-  function exportLabelme(){
-    return {version:'5.0.1-like', flags:{}, shapes: shapes.map(s=>({label:s.label, points:s.points, group_id:s.group_id, description:s.description||'', shape_type:s.type, flags:{...(s.flags||{}), color:s.color||shapeColor(s)}})), imagePath:imageName, imageData:null, imageHeight:image.naturalHeight||0, imageWidth:image.naturalWidth||0};
-  }
-  function download(name,blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-  $('#exportJsonBtn').onclick=()=>{ const data=JSON.stringify(exportLabelme(),null,2); download((imageName||'标注').replace(/\.[^.]+$/,'')+'.json', new Blob([data],{type:'application/json'})); };
-  $('#importBtn').onclick=()=>jsonInput.click();
-  jsonInput.onchange=e=>{ const f=e.target.files[0]; if(!f)return; const reader=new FileReader(); reader.onload=()=>{ try{ const data=JSON.parse(reader.result); shapes=(data.shapes||[]).map(x=>({id:idSeq++, label:x.label||'', points:x.points||[], group_id:x.group_id||null, description:x.description||'', type:x.shape_type||'polygon', color:(x.flags&&x.flags.color)||x.color||'', flags:x.flags||{}})); selectedId=null; syncLabels(shapes); render(); renderShapeList(); commitHistory(); }catch(err){alert('JSON 文件无效');} }; reader.readAsText(f); };
-  $('#exportPngBtn').onclick=async()=>{
-    if(!imageLoaded) return;
-    const canvas=document.createElement('canvas'); canvas.width=image.naturalWidth; canvas.height=image.naturalHeight; const ctx=canvas.getContext('2d'); ctx.filter=`brightness(${$('#brightness').value}%) contrast(${$('#contrast').value}%)`; ctx.drawImage(image,0,0); ctx.filter='none';
-    for(const s of shapes){ drawOnCanvas(ctx,s); }
-    canvas.toBlob(blob=>download((imageName||'标注').replace(/\.[^.]+$/,'')+'_已标注.png',blob),'image/png');
-  };
-  function drawCanvasLabel(ctx,s){
-    const label=(s.label||'未命名').trim();
-    if(!label) return;
-    const [rawX,rawY]=labelAnchor(s);
-    const x=Math.max(6,Math.min(image.naturalWidth-6,rawX));
-    const y=Math.max(6,Math.min(image.naturalHeight-6,rawY));
-    ctx.font='700 16px sans-serif';
-    ctx.fillStyle=shapeColor(s);
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-    ctx.fillText(label,x,y);
-    ctx.textAlign='start';
-    ctx.textBaseline='alphabetic';
-  }
-  function drawOnCanvas(ctx,s){ const color=shapeColor(s); ctx.lineWidth=7; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=color; ctx.fillStyle=hexToRgba(color,.12); ctx.beginPath(); if(s.type==='point'){ctx.arc(s.points[0][0],s.points[0][1],5,0,Math.PI*2);ctx.fill();ctx.stroke();drawCanvasLabel(ctx,s);return;} if(s.type==='circle'){ const cx=s.points[0][0],cy=s.points[0][1],r=Math.hypot(s.points[1][0]-cx,s.points[1][1]-cy); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); drawCanvasLabel(ctx,s); return;} s.points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); if(s.type==='polygon'||s.type==='rectangle'){ctx.closePath();ctx.fill();} ctx.stroke(); drawCanvasLabel(ctx,s); }
-  function openSample(){
-    // no bundled image. User opens local file.
-  }
-  initLabels(); updateTitle();
-})();
-</script>
+    renderIndex();
+    renderGrid();
+    switchView("index");
+    initFooter();
+  </script>
 </body>
 </html>
