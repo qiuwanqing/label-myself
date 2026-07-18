@@ -17,6 +17,24 @@
     --pink:#d57c83;
     --red:#e52f2f;
     --shadow:0 8px 30px rgba(0,0,0,.18);
+    /* 图上标注文字最大大小：现在是 45px。大范围标注最多会用到这个字号。 */
+    --annotation-label-font-size:45px;
+    /* 图上标注文字最小大小：圈得很小时会自动缩到很小，优先保证每个字都在圈内。 */
+    --annotation-label-min-font-size:.5px;
+    /* 图上标注文字每行宽度比例：每一行尽量控制在标注范围宽度的 86% 内。 */
+    --annotation-label-width-ratio:.86;
+    /* 图上标注文字总高度比例：多行文字整体尽量控制在标注范围高度的 80% 内。 */
+    --annotation-label-height-ratio:.8;
+    /* 异形文本框内边距：文字会离标注边界留出约 8% 的安全距离。 */
+    --annotation-label-margin-ratio:.08;
+    /* 图上标注文字行距：正常大小下行与行之间更松一点。 */
+    --annotation-label-line-height:1.34;
+    /* 标注线粗细：现在是 5px。多边形、矩形、圆形、自由绘制、线段都会用这个粗细。 */
+    --annotation-line-width:5;
+    /* 选中某个标注时的线粗细：现在是 5px。 */
+    --annotation-selected-line-width:5;
+    /* 正在绘制时预览线的粗细：现在是 5px。 */
+    --annotation-preview-line-width:5;
   }
   *{box-sizing:border-box}
   body{
@@ -76,18 +94,19 @@
   .placeholder{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:520px;max-width:80%;background:rgba(255,255,255,.86);border:1px dashed #aaa;border-radius:8px;text-align:center;padding:35px;color:#555;box-shadow:0 4px 18px rgba(0,0,0,.08)}
   .placeholder h2{margin:0 0 10px;font-size:19px}.placeholder p{margin:8px 0;font-size:11px}.placeholder button{margin-top:12px;height:36px;padding:0 18px;border:1px solid #bbb;background:#f7f7f7;border-radius:4px;font-size:11px;cursor:pointer}
   .statusbar{height:28px;flex:0 0 28px;background:#f4f4f4;border-top:1px solid #bcbcbc;display:flex;align-items:center;justify-content:space-between;padding:0 9px;font-size:11px;color:#333;white-space:nowrap}
-  .rightbar{background:#f4f4f4;display:grid;grid-template-rows:250px 1fr 230px;min-height:0}
+  .rightbar{background:#f4f4f4;display:grid;grid-template-rows:minmax(160px,1fr) 230px;min-height:0}
   .panel{border-bottom:1px solid #bfbfbf;display:flex;flex-direction:column;min-height:0;background:#f4f4f4}
   .panelhead{height:27px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;border-bottom:1px solid #d0d0d0;background:#eeeeee;font-size:11px;color:#333}
   .paneltools{display:flex;gap:4px;color:#777;font-size:10px}.paneltools span{border:1px solid #999;width:14px;height:14px;display:flex;align-items:center;justify-content:center;border-radius:2px;line-height:1}
-  .panelbody{flex:1;overflow:auto;background:white}.search{height:33px;padding:4px;border-bottom:1px solid #ddd;background:#f6f6f6}.search input{width:100%;height:24px}
-  .labellist,.shapelist,.filelist{list-style:none;margin:0;padding:0;font-size:12px}.labellist li,.shapelist li,.filelist li{height:28px;display:flex;align-items:center;gap:7px;padding:0 8px;white-space:nowrap;border-bottom:1px solid #f3f3f3;cursor:pointer}.labellist li:hover,.shapelist li:hover,.filelist li:hover{background:#eee}.shapelist li.selected,.filelist li.selected{background:#d9d9d9}.dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex:0 0 12px}.checkbox{width:17px;height:17px;border:1px solid #aaa;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#111;flex:0 0 17px}.labeltext{overflow:hidden;text-overflow:ellipsis}.muted{color:#aaa}.filelist li{font-size:10px}.rightpanel-note{padding:10px;font-size:9px;color:#777;line-height:1.5}
-  .shape-path{fill:rgba(213,124,131,.12);stroke:#d57c83;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-path.selected{stroke:#e31b23;stroke-width:8;fill:rgba(227,27,35,.1)}
-  .shape-rect{fill:rgba(0,185,45,.06);stroke:#00b928;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-rect.selected{stroke:#e31b23;stroke-width:8;fill:rgba(227,27,35,.08)}
-  .shape-line{fill:none;stroke:#d57c83;stroke-width:7;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-line.selected{stroke:#e31b23;stroke-width:8}
+  .panelbody{flex:1;overflow:auto;background:white;min-height:0}.label-panelbody{overflow-y:auto;overflow-x:hidden}
+  .search{height:33px;padding:4px;border-bottom:1px solid #ddd;background:#f6f6f6}.search input{width:100%;height:24px}
+  .labellist,.shapelist,.filelist{list-style:none;margin:0;padding:0;font-size:12px}.labellist{font-size:10px}.labellist li,.shapelist li,.filelist li{height:28px;display:flex;align-items:center;gap:7px;padding:0 8px;white-space:nowrap;border-bottom:1px solid #f3f3f3;cursor:pointer}.labellist li{height:22px;gap:5px;padding:0 7px}.labellist li:hover,.shapelist li:hover,.filelist li:hover{background:#eee}.shapelist li.selected,.filelist li.selected{background:#d9d9d9}.dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex:0 0 12px}.labellist .dot{width:10px;height:10px;flex-basis:10px}.checkbox{width:17px;height:17px;border:1px solid #aaa;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#111;flex:0 0 17px}.labeltext{overflow:hidden;text-overflow:ellipsis}.muted{color:#aaa}.filelist li{font-size:10px}.rightpanel-note{padding:10px;font-size:9px;color:#777;line-height:1.5}
+  .shape-path{fill:rgba(213,124,131,.12);stroke:#d57c83;stroke-width:var(--annotation-line-width);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-path.selected{stroke:#ff0008;stroke-width:var(--annotation-selected-line-width);fill:rgba(227,27,35,.1)}
+  .shape-rect{fill:rgba(0,185,45,.06);stroke:#00b928;stroke-width:var(--annotation-line-width);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-rect.selected{stroke:#e31b23;stroke-width:var(--annotation-selected-line-width);fill:rgba(227,27,35,.08)}
+  .shape-line{fill:none;stroke:#d57c83;stroke-width:var(--annotation-line-width);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}.shape-line.selected{stroke:#e31b23;stroke-width:var(--annotation-selected-line-width)}
   .shape-point{fill:#d57c83;stroke:white;stroke-width:2;vector-effect:non-scaling-stroke}.shape-point.selected{fill:#e31b23}
-  .shape-label{font-size:16px;font-weight:700;pointer-events:none;user-select:none}
-  .preview{fill:rgba(255,255,255,.08);stroke:#e31b23;stroke-width:2;stroke-dasharray:7 5;vector-effect:non-scaling-stroke}.crosshair{stroke:#777;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+  .shape-label{font-weight:700;pointer-events:none;user-select:none}
+  .preview{fill:rgba(255,255,255,.08);stroke:#e31b23;stroke-width:var(--annotation-preview-line-width);stroke-dasharray:7 5;vector-effect:non-scaling-stroke}.crosshair{stroke:#777;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
   .modalshade{position:fixed;inset:0;background:rgba(0,0,0,.04);display:none;z-index:30}.modal{position:absolute;width:360px;background:#eee;border:1px solid #c8c8c8;border-radius:14px;box-shadow:var(--shadow);overflow:hidden}.modalbar{height:34px;display:flex;align-items:center;padding:0 11px;gap:8px;background:#eeeeee}.modalbar span{width:14px;height:14px;border-radius:50%;display:block}.close{background:#ff5f56}.min{background:#ffbd2e}.max{background:#27c93f}.modalbody{padding:10px 14px 15px}.modalrow{display:flex;gap:8px;margin-bottom:9px}.modalrow input{flex:1;height:34px;font-size:13px}.modalrow .group{width:78px;flex:0 0 78px;color:#888}.colorpick{width:42px!important;flex:0 0 42px!important;padding:2px!important}.modalactions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px}.modalactions button{width:96px;height:33px;border-radius:4px;border:1px solid #b8b8b8;background:#f7f7f7;font-size:12px}.modalactions button.primary{border-color:#5aa2dd;background:#eef7ff}.suggestions{height:180px;background:white;border:1px solid #ccc;overflow:auto;margin-bottom:8px}.suggestions div{height:24px;display:flex;align-items:center;padding:0 7px;font-size:12px}.suggestions div:hover,.suggestions div.active{background:#d7d7d7}.descbox{width:100%;height:58px;border:1px solid #ccc;border-radius:3px;resize:none;font-size:11px;padding:8px;font-family:inherit}.hidden{display:none!important}.hint{font-size:9px;color:#666;padding:4px 8px;background:#fff7d7;border-top:1px solid #e5dba0}.splitlabel{font-size:9px;color:#888}.rangegroup{display:flex;flex-direction:column;gap:3px;min-width:142px}.rangegroup label{font-size:9px;color:#555}.rangegroup input{width:120px}
 </style>
 </head>
@@ -152,12 +171,7 @@
     <div class="rightbar">
       <div class="panel">
         <div class="panelhead"><span>标签列表</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
-        <div class="panelbody"><ul class="labellist" id="labelList"></ul></div>
-      </div>
-      <div class="panel">
-        <div class="panelhead"><span>标注对象</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
-        <div class="panelbody"><ul class="shapelist" id="shapeList"></ul></div>
-        <div class="hint">导出 JSON = 类 LabelMe 格式。导出 PNG = 当前标注截图。</div>
+        <div class="panelbody label-panelbody"><ul class="labellist" id="labelList"></ul></div>
       </div>
       <div class="panel">
         <div class="panelhead"><span>图片列表</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
@@ -199,7 +213,7 @@
   let files=[], currentFileIndex=-1, imageName='', imageLoaded=false;
   let shapes=[], selectedId=null, idSeq=1;
   let tool='polygon', zoom=1, drawing=false, start=null, preview=null, tempPoints=[];
-  let pendingShape=null;
+  let pendingShape=null, pendingPreview=null;
   let mousePos={x:0,y:0};
   let resizingRight=false;
   let modalColorTouched=false;
@@ -390,12 +404,36 @@
   function finishDragShape(p){ if(!start) return; const pts = rectPoints(start,p); drawing=false; removePreview(); if(tool==='rectangle'){ if(Math.abs(p.x-start.x)>2 && Math.abs(p.y-start.y)>2) createShape('rectangle', pts); } else if(tool==='circle'){ const r=Math.hypot(p.x-start.x,p.y-start.y); if(r>2) createShape('circle', [[start.x,start.y],[p.x,p.y]]); } start=null; }
   function rectPoints(a,b){ return [[a.x,a.y],[b.x,a.y],[b.x,b.y],[a.x,b.y]]; }
   function finishTemp(type){ if((type==='polygon'&&tempPoints.length<3)||(type==='linestrip'&&tempPoints.length<2)) return; const pts=tempPoints.slice(); cancelTemp(); createShape(type,pts); }
-  function createShape(type,points){ pendingShape={id:idSeq++, type, points, label:'', group_id:null, description:'', color:'', flags:{}}; openLabelDialog(pendingShape); }
-  function savePendingShape(){ if(!pendingShape) return; const label=(modalLabel.value||'未命名').trim(); pendingShape.label=label; pendingShape.group_id=modalGroup.value.trim() || null; pendingShape.description=modalDesc.value.trim(); pendingShape.color=modalColor.value || labelColor(label); if(!baseLabels.includes(label)){baseLabels.push(label); renderLabelList();} shapes.push(pendingShape); selectedId=pendingShape.id; pendingShape=null; render(); renderShapeList(); commitHistory(); }
-  function cancelPendingShape(){ pendingShape=null; }
+  function createShape(type,points){ pendingShape={id:idSeq++, type, points, label:'', group_id:null, description:'', color:'', flags:{}}; createPendingPreview(pendingShape); openLabelDialog(pendingShape); }
+  function savePendingShape(){ if(!pendingShape) return; const label=(modalLabel.value||'未命名').trim(); pendingShape.label=label; pendingShape.group_id=modalGroup.value.trim() || null; pendingShape.description=modalDesc.value.trim(); pendingShape.color=modalColor.value || labelColor(label); if(!baseLabels.includes(label)){baseLabels.push(label); renderLabelList();} shapes.push(pendingShape); selectedId=pendingShape.id; pendingShape=null; removePendingPreview(); render(); renderShapeList(); commitHistory(); }
+  function cancelPendingShape(){ pendingShape=null; removePendingPreview(); }
   function cancelTemp(){ drawing=false; tempPoints=[]; start=null; removePreview(); }
   function createPreview(){ if(!preview){preview=document.createElementNS('http://www.w3.org/2000/svg','path'); preview.setAttribute('class','preview'); overlay.appendChild(preview);} }
   function removePreview(){ if(preview){preview.remove(); preview=null;} }
+  function createPendingPreview(shape){
+    removePendingPreview();
+    if(shape.type==='point'){
+      pendingPreview=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      pendingPreview.setAttribute('cx',shape.points[0][0]);
+      pendingPreview.setAttribute('cy',shape.points[0][1]);
+      pendingPreview.setAttribute('r',5);
+    }else{
+      pendingPreview=document.createElementNS('http://www.w3.org/2000/svg','path');
+      let d='';
+      if(shape.type==='polygon'||shape.type==='rectangle'||shape.type==='freehand') d=polygonD(shape.points,true);
+      if(shape.type==='linestrip'||shape.type==='line') d=lineD(shape.points);
+      if(shape.type==='circle'){
+        const cx=shape.points[0][0], cy=shape.points[0][1], r=Math.hypot(shape.points[1][0]-cx,shape.points[1][1]-cy);
+        d=circleD(cx,cy,r);
+      }
+      pendingPreview.setAttribute('d',d);
+    }
+    pendingPreview.setAttribute('class','preview pending-preview');
+    pendingPreview.style.stroke=modalColor.value || labelColor('未命名');
+    overlay.appendChild(pendingPreview);
+  }
+  function removePendingPreview(){ if(pendingPreview){pendingPreview.remove(); pendingPreview=null;} }
+  function updatePendingPreviewColor(){ if(pendingPreview) pendingPreview.style.stroke=modalColor.value || labelColor(modalLabel.value||'未命名'); }
   function updatePreview(p){
     if(!preview) return;
     if(tool==='polygon'){ const pts=tempPoints.concat([[p.x,p.y]]); preview.setAttribute('d', polygonD(pts,false)); }
@@ -448,28 +486,217 @@
     const xs=s.points.map(p=>p[0]), ys=s.points.map(p=>p[1]);
     return {minX:Math.min(...xs),minY:Math.min(...ys),maxX:Math.max(...xs),maxY:Math.max(...ys)};
   }
+  function polygonArea(points){
+    if(points.length<3) return 0;
+    let area=0;
+    for(let i=0;i<points.length;i++){
+      const a=points[i], b=points[(i+1)%points.length];
+      area+=a[0]*b[1]-b[0]*a[1];
+    }
+    return Math.abs(area)/2;
+  }
+  function shapeArea(s){
+    if(!s.points.length) return 0;
+    if(s.type==='circle' && s.points.length>1){
+      const r=Math.hypot(s.points[1][0]-s.points[0][0],s.points[1][1]-s.points[0][1]);
+      return Math.PI*r*r;
+    }
+    if(s.type==='polygon'||s.type==='rectangle'||s.type==='freehand') return polygonArea(s.points);
+    const bounds=shapeBounds(s);
+    const boxArea=Math.max(0,bounds.maxX-bounds.minX)*Math.max(0,bounds.maxY-bounds.minY);
+    return boxArea || 1;
+  }
+  function annotationLabelFontSize(){ return cssNumberVar('--annotation-label-font-size',16); }
+  function annotationLabelMinFontSize(){ return cssNumberVar('--annotation-label-min-font-size',.5); }
+  function annotationLabelWidthRatio(){ return cssNumberVar('--annotation-label-width-ratio',.86); }
+  function annotationLabelHeightRatio(){ return cssNumberVar('--annotation-label-height-ratio',.8); }
+  function annotationLabelMarginRatio(){ return cssNumberVar('--annotation-label-margin-ratio',.08); }
+  function annotationLabelLineHeight(fontSize=annotationLabelFontSize()){ return fontSize*cssNumberVar('--annotation-label-line-height',1.34); }
+  function labelMeasureContext(fontSize=annotationLabelFontSize()){
+    if(!labelMeasureContext.canvas) labelMeasureContext.canvas=document.createElement('canvas');
+    const ctx=labelMeasureContext.canvas.getContext('2d');
+    ctx.font=annotationLabelFont(fontSize);
+    return ctx;
+  }
+  function labelInnerMargin(s,fontSize){
+    const bounds=shapeBounds(s);
+    const width=Math.max(0,bounds.maxX-bounds.minX);
+    const height=Math.max(0,bounds.maxY-bounds.minY);
+    const ratioMargin=Math.min(width,height)*annotationLabelMarginRatio();
+    return Math.max(fontSize*.8,ratioMargin);
+  }
+  function labelMaxBlockHeight(s,fontSize){
+    const bounds=shapeBounds(s);
+    const height=Math.max(0,bounds.maxY-bounds.minY);
+    const margin=labelInnerMargin(s,fontSize);
+    return height>0 ? Math.max(0,height*annotationLabelHeightRatio()-margin*2) : Infinity;
+  }
+  function polygonTextIntervalsAtY(points,y){
+    const xs=[];
+    for(let i=0;i<points.length;i++){
+      const a=points[i], b=points[(i+1)%points.length];
+      if(a[1]===b[1]) continue;
+      const minY=Math.min(a[1],b[1]), maxY=Math.max(a[1],b[1]);
+      if(y>=minY && y<maxY){
+        const t=(y-a[1])/(b[1]-a[1]);
+        xs.push(a[0]+t*(b[0]-a[0]));
+      }
+    }
+    xs.sort((a,b)=>a-b);
+    const intervals=[];
+    for(let i=0;i<xs.length-1;i+=2){
+      intervals.push({left:xs[i],right:xs[i+1],width:xs[i+1]-xs[i]});
+    }
+    return intervals.filter(interval=>interval.width>0);
+  }
+  function textSpanAtExactY(s,y){
+    const [anchorX]=labelAnchor(s);
+    if(s.type==='circle' && s.points.length>1){
+      const cx=s.points[0][0], cy=s.points[0][1];
+      const r=Math.hypot(s.points[1][0]-cx,s.points[1][1]-cy);
+      const dy=Math.abs(y-cy);
+      if(dy>r) return null;
+      const dx=Math.sqrt(Math.max(0,r*r-dy*dy));
+      return {x:cx,width:Math.max(0,dx*2*annotationLabelWidthRatio())};
+    }
+    if((s.type==='polygon'||s.type==='rectangle'||s.type==='freehand') && s.points.length>2){
+      const intervals=polygonTextIntervalsAtY(s.points,y);
+      if(!intervals.length) return null;
+      const containing=intervals.find(interval=>anchorX>=interval.left && anchorX<=interval.right);
+      const interval=containing || intervals.reduce((best,item)=>item.width>best.width?item:best,intervals[0]);
+      return {x:(interval.left+interval.right)/2,width:interval.width*annotationLabelWidthRatio()};
+    }
+    const bounds=shapeBounds(s);
+    const width=Math.max(0,bounds.maxX-bounds.minX);
+    return {x:(bounds.minX+bounds.maxX)/2,width:width>0 ? width*annotationLabelWidthRatio() : annotationLabelFontSize()*4};
+  }
+  function intersectTextSpans(spans){
+    const valid=spans.filter(Boolean);
+    if(!valid.length) return null;
+    const left=Math.max(...valid.map(span=>span.x-span.width/2));
+    const right=Math.min(...valid.map(span=>span.x+span.width/2));
+    return right>left ? {x:(left+right)/2,width:right-left} : null;
+  }
+  function textSpanAtY(s,y,lineHeight,fontSize){
+    const half=lineHeight*.52;
+    const margin=labelInnerMargin(s,fontSize);
+    const span=intersectTextSpans([
+      textSpanAtExactY(s,y-half),
+      textSpanAtExactY(s,y),
+      textSpanAtExactY(s,y+half)
+    ]);
+    if(!span) return null;
+    const width=span.width-margin*2;
+    return width>0 ? {x:span.x,width} : null;
+  }
+  function wrapLabelIntoSpans(label,spans,fontSize){
+    const ctx=labelMeasureContext(fontSize);
+    const lines=[];
+    let lineIndex=0;
+    let current='';
+    for(const ch of Array.from(label)){
+      if(ch==='\n'){
+        if(current) lines.push({text:current,x:spans[lineIndex].x,y:spans[lineIndex].y});
+        current='';
+        lineIndex++;
+        if(lineIndex>=spans.length) return null;
+        continue;
+      }
+      const next=current+ch;
+      if(current && ctx.measureText(next).width>spans[lineIndex].width){
+        lines.push({text:current,x:spans[lineIndex].x,y:spans[lineIndex].y});
+        lineIndex++;
+        if(lineIndex>=spans.length) return null;
+        current=ch.trimStart();
+        if(ctx.measureText(current).width>spans[lineIndex].width) return null;
+      }else{
+        current=next;
+        if(ctx.measureText(current).width>spans[lineIndex].width) return null;
+      }
+    }
+    if(current) lines.push({text:current,x:spans[lineIndex].x,y:spans[lineIndex].y});
+    return lines.length ? lines : null;
+  }
+  function tryLabelLayout(label,s,fontSize,lineCount){
+    const [,centerY]=labelAnchor(s);
+    const lineHeight=annotationLabelLineHeight(fontSize);
+    const startY=centerY-((lineCount-1)*lineHeight)/2;
+    const spans=[];
+    for(let i=0;i<lineCount;i++){
+      const y=startY+i*lineHeight;
+      const span=textSpanAtY(s,y,lineHeight,fontSize);
+      if(!span || span.width<1) return null;
+      spans.push({...span,y});
+    }
+    const lines=wrapLabelIntoSpans(label,spans,fontSize);
+    if(!lines) return null;
+    if(lines.length<lineCount){
+      const tighter=tryLabelLayout(label,s,fontSize,lines.length);
+      if(tighter) return tighter;
+    }
+    return {lines,fontSize,lineHeight};
+  }
+  function emergencyLabelLayout(label,s){
+    const chars=Array.from(label).filter(ch=>ch!=='\n');
+    const maxLines=Math.max(1,chars.length);
+    for(let fontSize=annotationLabelMinFontSize();fontSize>=.05;fontSize-=.05){
+      for(let lineCount=1;lineCount<=maxLines;lineCount++){
+        const layout=tryLabelLayout(label,s,fontSize,lineCount);
+        if(layout) return layout;
+      }
+    }
+    const [fallbackX,fallbackY]=labelAnchor(s);
+    return {lines:chars.map((ch,i)=>({text:ch,x:fallbackX,y:fallbackY+i*.08})),fontSize:.05,lineHeight:.08};
+  }
+  function labelLayout(label,s){
+    const maxFont=Math.max(annotationLabelMinFontSize(),annotationLabelFontSize());
+    const minFont=Math.min(annotationLabelMinFontSize(),maxFont);
+    const maxLines=Math.max(1,Array.from(label).filter(ch=>ch!=='\n').length);
+    for(let fontSize=maxFont;fontSize>=minFont;fontSize-=.5){
+      const lineHeight=annotationLabelLineHeight(fontSize);
+      const maxBlockHeight=labelMaxBlockHeight(s,fontSize);
+      for(let lineCount=1;lineCount<=maxLines;lineCount++){
+        if(lineCount*lineHeight>maxBlockHeight) break;
+        const layout=tryLabelLayout(label,s,fontSize,lineCount);
+        if(layout) return layout;
+      }
+    }
+    return emergencyLabelLayout(label,s);
+  }
   function drawShapeLabel(s){
     const label=(s.label||'未命名').trim();
     if(!label) return;
     const [rawX,rawY]=labelAnchor(s);
     const x=Math.max(6,Math.min(image.naturalWidth-6,rawX));
     const y=Math.max(6,Math.min(image.naturalHeight-6,rawY));
+    const {lines,fontSize}=labelLayout(label,s);
     const text=document.createElementNS('http://www.w3.org/2000/svg','text');
     text.setAttribute('class','drawn shape-label');
     text.setAttribute('x',x);
     text.setAttribute('y',y);
+    text.setAttribute('font-size',fontSize);
+    text.setAttribute('font-weight','700');
+    text.style.fontSize=fontSize+'px';
     text.setAttribute('text-anchor','middle');
     text.setAttribute('dominant-baseline','central');
     text.style.fill=shapeColor(s);
-    text.textContent=label;
+    lines.forEach((line,i)=>{
+      const tspan=document.createElementNS('http://www.w3.org/2000/svg','tspan');
+      tspan.setAttribute('x',line.x);
+      tspan.setAttribute('y',line.y);
+      tspan.textContent=line.text;
+      text.appendChild(tspan);
+    });
     overlay.appendChild(text);
   }
   function shapeClass(s){ if(s.type==='rectangle') return 'shape-rect'; if(s.type==='line'||s.type==='linestrip') return 'shape-line'; return 'shape-path'; }
   function hexToRgba(hex,a){ if(hex.startsWith('hsl')) return hex.replace('hsl','hsla').replace(')',`,${a})`); const h=hex.replace('#',''); const n=parseInt(h,16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
   function renderShapeList(){
-    $('#shapeList').innerHTML = shapes.map(s=>`<li data-id="${s.id}" class="${s.id===selectedId?'selected':''}"><span class="checkbox">✓</span><span class="labeltext">${escapeHtml(s.label||'未命名')}</span><span class="dot" style="background:${shapeColor(s)}"></span></li>`).join('');
+    const shapeList=$('#shapeList');
+    if(!shapeList) return;
+    shapeList.innerHTML = shapes.map(s=>`<li data-id="${s.id}" class="${s.id===selectedId?'selected':''}"><span class="checkbox">✓</span><span class="labeltext">${escapeHtml(s.label||'未命名')}</span><span class="dot" style="background:${shapeColor(s)}"></span></li>`).join('');
   }
-  $('#shapeList').addEventListener('click', e=>{const li=e.target.closest('li'); if(li){selectedId=+li.dataset.id; render(); renderShapeList();}});
+  if($('#shapeList')) $('#shapeList').addEventListener('click', e=>{const li=e.target.closest('li'); if(li){selectedId=+li.dataset.id; render(); renderShapeList();}});
   function deleteSelected(){ if(!selectedId) return; shapes=shapes.filter(s=>s.id!==selectedId); selectedId=null; render(); renderShapeList(); commitHistory(); }
   $('#deleteShapeBtn').onclick=deleteSelected;
   $('#undoBtn').onclick=undoHistory;
@@ -478,7 +705,7 @@
 
   function openLabelDialog(shape){
     modalColorTouched=!!shape.color;
-    modalLabel.value=shape.label||''; modalGroup.value=shape.group_id||''; modalColor.value=shape.color||labelColor(shape.label||'未命名'); modalDesc.value=shape.description||''; renderSuggestions(modalLabel.value); labelModal.style.display='block'; positionLabelDialog(shape); setTimeout(()=>modalLabel.focus(),30);
+    modalLabel.value=shape.label||''; modalGroup.value=shape.group_id||''; modalColor.value=shape.color||labelColor(shape.label||'未命名'); modalDesc.value=shape.description||''; renderSuggestions(modalLabel.value); updatePendingPreviewColor(); labelModal.style.display='block'; positionLabelDialog(shape); setTimeout(()=>modalLabel.focus(),30);
   }
   function positionLabelDialog(shape){
     const modal=labelModal.querySelector('.modal');
@@ -502,8 +729,8 @@
   function closeModal(){ labelModal.style.display='none'; cancelPendingShape(); render(); }
   function modalOK(){ labelModal.style.display='none'; savePendingShape(); }
   $('#modalOk').onclick=modalOK; $('#modalCancel').onclick=closeModal;
-  modalLabel.addEventListener('input',()=>{ renderSuggestions(modalLabel.value); if(!modalColorTouched) modalColor.value=labelColor(modalLabel.value||'未命名'); });
-  modalColor.addEventListener('input',()=>{ modalColorTouched=true; });
+  modalLabel.addEventListener('input',()=>{ renderSuggestions(modalLabel.value); if(!modalColorTouched) modalColor.value=labelColor(modalLabel.value||'未命名'); updatePendingPreviewColor(); });
+  modalColor.addEventListener('input',()=>{ modalColorTouched=true; updatePendingPreviewColor(); });
   function renderSuggestions(q){
     q=(q||'').toLowerCase(); const arr=baseLabels.filter(l=>!q||l.toLowerCase().includes(q));
     $('#suggestions').innerHTML=arr.map(l=>`<div data-label="${escapeAttr(l)}" class="${l===modalLabel.value?'active':''}">${escapeHtml(l)}</div>`).join('');
@@ -535,6 +762,12 @@
   function exportLabelme(){
     return {version:'5.0.1-like', flags:{}, shapes: shapes.map(s=>({label:s.label, points:s.points, group_id:s.group_id, description:s.description||'', shape_type:s.type, flags:{...(s.flags||{}), color:s.color||shapeColor(s)}})), imagePath:imageName, imageData:null, imageHeight:image.naturalHeight||0, imageWidth:image.naturalWidth||0};
   }
+  function cssNumberVar(name,fallback){
+    const value=parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+    return Number.isFinite(value) ? value : fallback;
+  }
+  function annotationLineWidth(){ return cssNumberVar('--annotation-line-width',7); }
+  function annotationLabelFont(fontSize=annotationLabelFontSize()){ return `700 ${fontSize}px sans-serif`; }
   function download(name,blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
   $('#exportJsonBtn').onclick=()=>{ const data=JSON.stringify(exportLabelme(),null,2); download((imageName||'标注').replace(/\.[^.]+$/,'')+'.json', new Blob([data],{type:'application/json'})); };
   $('#importBtn').onclick=()=>jsonInput.click();
@@ -551,15 +784,16 @@
     const [rawX,rawY]=labelAnchor(s);
     const x=Math.max(6,Math.min(image.naturalWidth-6,rawX));
     const y=Math.max(6,Math.min(image.naturalHeight-6,rawY));
-    ctx.font='700 16px sans-serif';
+    const {lines,fontSize}=labelLayout(label,s);
+    ctx.font=annotationLabelFont(fontSize);
     ctx.fillStyle=shapeColor(s);
     ctx.textAlign='center';
     ctx.textBaseline='middle';
-    ctx.fillText(label,x,y);
+    lines.forEach(line=>ctx.fillText(line.text,line.x,line.y));
     ctx.textAlign='start';
     ctx.textBaseline='alphabetic';
   }
-  function drawOnCanvas(ctx,s){ const color=shapeColor(s); ctx.lineWidth=7; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=color; ctx.fillStyle=hexToRgba(color,.12); ctx.beginPath(); if(s.type==='point'){ctx.arc(s.points[0][0],s.points[0][1],5,0,Math.PI*2);ctx.fill();ctx.stroke();drawCanvasLabel(ctx,s);return;} if(s.type==='circle'){ const cx=s.points[0][0],cy=s.points[0][1],r=Math.hypot(s.points[1][0]-cx,s.points[1][1]-cy); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); drawCanvasLabel(ctx,s); return;} s.points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); if(s.type==='polygon'||s.type==='rectangle'||s.type==='freehand'){ctx.closePath();ctx.fill();} ctx.stroke(); drawCanvasLabel(ctx,s); }
+  function drawOnCanvas(ctx,s){ const color=shapeColor(s); ctx.lineWidth=annotationLineWidth(); ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=color; ctx.fillStyle=hexToRgba(color,.12); ctx.beginPath(); if(s.type==='point'){ctx.arc(s.points[0][0],s.points[0][1],5,0,Math.PI*2);ctx.fill();ctx.stroke();drawCanvasLabel(ctx,s);return;} if(s.type==='circle'){ const cx=s.points[0][0],cy=s.points[0][1],r=Math.hypot(s.points[1][0]-cx,s.points[1][1]-cy); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); drawCanvasLabel(ctx,s); return;} s.points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); if(s.type==='polygon'||s.type==='rectangle'||s.type==='freehand'){ctx.closePath();ctx.fill();} ctx.stroke(); drawCanvasLabel(ctx,s); }
   function openSample(){
     // no bundled image. User opens local file.
   }
