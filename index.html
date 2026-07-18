@@ -77,6 +77,9 @@
   .selectrow{display:flex;gap:8px;align-items:center}
   select,input[type="text"],input[type="number"]{height:30px;border:1px solid #c5c5c5;border-radius:3px;background:white;padding:0 8px;font-size:10px;color:#333}
   .smallinput{width:70px}.runbtn{height:30px;border:1px solid #ccc;background:#f2f2f2;border-radius:3px;padding:0 10px;color:#777;font-size:10px}
+  .export-actions{border-right:0;border-top:1px solid #ddd;background:#eee;display:flex;gap:6px;padding:6px;min-width:0}
+  .export-actions .runbtn{flex:1 1 0;min-width:0;padding:0 4px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media (max-width: 760px){.export-actions{flex-direction:column}.export-actions .runbtn{width:100%;flex-basis:auto}}
   .zoom-box{display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;min-width:90px}.zoom-box span{font-size:10px}.zoom-box input{width:70px;text-align:center;font-weight:600}
   .main{--rightbar-width:220px;flex:1;display:grid;grid-template-columns:68px 1fr 6px var(--rightbar-width);min-height:0}
   .leftbar{background:#f0f0f0;border-right:1px solid #bfbfbf;display:flex;flex-direction:column;align-items:stretch;padding:8px 0;overflow:auto}
@@ -177,7 +180,7 @@
         <div class="panelhead"><span>图片列表</span><span class="paneltools"><span>▣</span><span>×</span></span></div>
         <div class="search"><input id="fileSearch" placeholder="搜索文件名"></div>
         <div class="panelbody"><ul class="filelist" id="fileList"></ul></div>
-        <div class="toolgroup" style="border-right:0;border-top:1px solid #ddd;justify-content:space-between;background:#eee">
+        <div class="export-actions">
           <button class="runbtn" id="importBtn">导入 JSON</button>
           <button class="runbtn" id="exportJsonBtn">导出 JSON</button>
           <button class="runbtn" id="exportPngBtn">导出 PNG</button>
